@@ -1,0 +1,14 @@
+เปิด powershell admin
+------- Start-Process powershell -Verb RunAs
+
+netsh advfirewall firewall add rule name="Uvicorn 8000" dir=in action=allow protocol=TCP localport=8000
+
+([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")
+
+
+cd fastapi_login
+venv\Scripts\Activate
+uvicorn main:app --host 0.0.0.0 --port 8000
+
+
+npx expo start -c 
