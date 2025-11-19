@@ -5,11 +5,20 @@ import Svg, { Circle } from "react-native-svg";
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
-export default function RadialProgressChart({ value, goal, color, label }) {
+export default function RadialProgressChart({
+  value,
+  goal,
+  color,
+  label,
+  hideValue = false,
+  hideLabel = false,
+  labelStyle = {}
+}) {
   const screenWidth = Dimensions.get("window").width;
 
-  const radius = screenWidth * 0.10;     // ลดจาก 0.12 → 0.10
-  const strokeWidth = screenWidth * 0.025;
+  // ⭐ เพิ่มความหนาของกราฟ strokeWidth = 0.04 (จาก 0.025)
+  const radius = screenWidth * 0.10;
+  const strokeWidth = screenWidth * 0.04;   // ✅ กราฟหนาขึ้น
   const circumference = 2 * Math.PI * radius;
 
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -28,12 +37,15 @@ export default function RadialProgressChart({ value, goal, color, label }) {
     const id = animatedValue.addListener(({ value }) => {
       setDisplayValue(Math.round((value / circumference) * goal));
     });
+
     return () => animatedValue.removeListener(id);
   }, [progress, goal]);
 
   return (
     <View style={styles.item}>
       <Svg width={size} height={size}>
+
+        {/* วงกลมพื้นหลัง */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -43,12 +55,13 @@ export default function RadialProgressChart({ value, goal, color, label }) {
           fill="transparent"
         />
 
+        {/* วงกลมที่เคลื่อนไหวตามค่า progress */}
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           stroke={color}
-          strokeWidth={strokeWidth}
+          strokeWidth={strokeWidth}       
           strokeDasharray={circumference}
           strokeDashoffset={animatedValue.interpolate({
             inputRange: [0, circumference],
@@ -59,8 +72,15 @@ export default function RadialProgressChart({ value, goal, color, label }) {
         />
       </Svg>
 
-      <Text style={[styles.value, { color }]}>{displayValue} g</Text>
-      <Text style={styles.label}>{label}</Text>
+      {/* ซ่อนค่าตัวเลขถ้าสั่ง hideValue */}
+      {!hideValue && (
+        <Text style={[styles.value, { color }]}>{displayValue} g</Text>
+      )}
+
+      {/* label (สามารถซ่อนหรือปรับ style ได้) */}
+      {!hideLabel && (
+        <Text style={[styles.label, labelStyle]}>{label}</Text>
+      )}
     </View>
   );
 }
@@ -71,7 +91,7 @@ const styles = StyleSheet.create({
   },
   value: {
     fontWeight: "bold",
-    fontSize: 15,   // ลดลงนิดนึง
+    fontSize: 15,
     marginTop: 6,
   },
   label: {

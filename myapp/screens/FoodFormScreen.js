@@ -1,11 +1,12 @@
-// FoodFormScreen.js  
+// FoodFormScreen.js
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
-  Alert, KeyboardAvoidingView, Platform, ScrollView
+  Alert, KeyboardAvoidingView, ScrollView
 } from "react-native";
 import { API, API_BASE } from "../api";
 
+// ✨ เพิ่มรายการ Mapping ชื่ออาหาร → ชื่อไทย
 const nameMap = {
   "Papaya Salad": "ส้มตำ",
   "Pad Thai": "ผัดไทย",
@@ -14,15 +15,14 @@ const nameMap = {
   "Shrimp Tom Yum": "ต้มยำกุ้ง",
   "Grilled Pork": "ลาบหมู",
   "Roast Chicken": "ข้าวมันไก่",
+  "Omelet Rice": "ข้าวไข่เจียว",
 };
 
 export default function FoodFormScreen({ navigation, route }) {
   const { imageUrl, preset = {} } = route.params || {};
 
-  // ถ้าไม่มีค่ามา ให้เป็น null เพื่อไม่โยน error
+  // ---------------------- IMAGE ----------------------
   const [localImage, setLocalImage] = useState(imageUrl || null);
-
-  // ป้องกัน Unsupported URI: ""
   const fullImageUri =
     localImage && typeof localImage === "string"
       ? localImage.startsWith("/")
@@ -30,6 +30,7 @@ export default function FoodFormScreen({ navigation, route }) {
         : localImage
       : null;
 
+  // ---------------------- FORM DATA ----------------------
   const [name, setName] = useState("");
   const [protein, setProtein] = useState("");
   const [fat, setFat] = useState("");
@@ -39,20 +40,22 @@ export default function FoodFormScreen({ navigation, route }) {
   const mealTime = route.params?.meal || "เช้า";
   const [saving, setSaving] = useState(false);
 
-  // ---------------------- PRESET ----------------------
+  // ---------------------- PRESET (จาก AI + DB) ----------------------
   useEffect(() => {
+    // เติมชื่ออาหาร
     if (preset.name) {
       const cleaned = preset.name.trim();
       const mapped = nameMap[cleaned] || cleaned;
       setName(mapped);
     }
+    // เติมโภชนาการ
     if (preset.protein) setProtein(String(preset.protein));
     if (preset.fat) setFat(String(preset.fat));
     if (preset.carb) setCarb(String(preset.carb));
     if (preset.kcal) setKcal(String(preset.kcal));
   }, [preset]);
 
-  // ---------------------- SEARCH MENU ----------------------
+  // ---------------------- SEARCH NUTRITION ----------------------
   const searchNutrition = async () => {
     const q = name.trim();
     if (!q) return Alert.alert("กรุณากรอกชื่ออาหาร");
@@ -68,7 +71,7 @@ export default function FoodFormScreen({ navigation, route }) {
 
       setProtein(item.protein?.toString() || "");
       setFat(item.fat?.toString() || "");
-      setCarb(item.carbs?.toString() || ""); // FIX carb
+      setCarb(item.carbs?.toString() || "");
       setKcal(item.calories?.toString() || "");
     } catch (err) {
       Alert.alert("เกิดข้อผิดพลาด", err.message);
@@ -88,19 +91,14 @@ export default function FoodFormScreen({ navigation, route }) {
 
     const res = await fetch(`${API_BASE}/files/upload`, {
       method: "POST",
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+      headers: { "Content-Type": "multipart/form-data" },
       body: formData,
     });
 
     const data = await res.json();
+    if (!data.url) throw new Error("Upload image failed");
 
-    if (!data.url) {
-      throw new Error("Upload image failed");
-    }
-
-    return data.url; // เช่น /uploads/xxxx.jpg
+    return data.url;
   };
 
   // ---------------------- SAVE ----------------------
@@ -112,7 +110,7 @@ export default function FoodFormScreen({ navigation, route }) {
     try {
       setSaving(true);
 
-      // อัปโหลดเฉพาะภาพจาก file://
+      // อัปโหลดเฉพาะ file://
       if (localImage && localImage.startsWith("file://")) {
         uploadUrl = await uploadImage(localImage);
       }
@@ -124,7 +122,7 @@ export default function FoodFormScreen({ navigation, route }) {
         carb: Number(carb) || 0,
         calories: Number(kcal) || 0,
         meal_time: mealTime,
-        image_url: uploadUrl || null, // ป้องกัน undefined
+        image_url: uploadUrl || null,
       };
 
       await API.post("/meals", payload);
@@ -152,7 +150,7 @@ export default function FoodFormScreen({ navigation, route }) {
       <View style={s.container}>
         <ScrollView contentContainerStyle={s.content}>
           
-          {/* IMAGE PREVIEW */}
+          {/* IMAGE */}
           <View style={s.imageCard}>
             {fullImageUri ? (
               <Image source={{ uri: fullImageUri }} style={s.image} />
@@ -161,7 +159,7 @@ export default function FoodFormScreen({ navigation, route }) {
             )}
           </View>
 
-          {/* NAME INPUT */}
+          {/* NAME */}
           <Text style={s.label}>ชื่ออาหาร</Text>
           <View style={s.row}>
             <TextInput
@@ -202,7 +200,7 @@ export default function FoodFormScreen({ navigation, route }) {
   );
 }
 
-// ---------------------- Field Component ----------------------
+// ---------------------- FIELD COMPONENT ----------------------
 function Field({ label, value, setter, numeric }) {
   return (
     <View style={{ marginBottom: 14 }}>
@@ -217,7 +215,7 @@ function Field({ label, value, setter, numeric }) {
   );
 }
 
-// ---------------------- Styles ----------------------
+// ---------------------- STYLES ----------------------
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#C9FFE0" },
   content: { paddingHorizontal: 20, paddingBottom: 40 },

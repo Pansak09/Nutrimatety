@@ -16,11 +16,13 @@ import FoodFormScreen from './screens/FoodFormScreen';
 import FoodFormScreen1 from './screens/FoodFormScreen1';
 import FoodDetail from './screens/FoodDetail'; 
 import FoodEditDetail from './screens/FoodEditDetail';
+import SummaryScreen from './screens/SummaryScreen'; 
 
 // Main tabs
 import HomeScreen from './screens/HomeScreen';
 import CameraScreen from './screens/CameraScreen';
 import HistoryScreen from './screens/HistoryScreen';
+import HistoryDetail from './screens/HistoryDetail';
 import ProfileScreen from './screens/ProfileScreen';
 
 const AuthStack = createStackNavigator();
@@ -31,6 +33,7 @@ function AuthNavigator() {
       <AuthStack.Screen name="Register" component={RegisterScreen} />
       <AuthStack.Screen name="CreateProfile" component={CreateProfileScreen} />
       <AuthStack.Screen name="Picture" component={PictureScreen} />
+      <AuthStack.Screen name="Summary" component={SummaryScreen} />
     </AuthStack.Navigator>
   );
 }
@@ -77,6 +80,7 @@ export default function App() {
         <RootStack.Screen name="FoodForm1" component={FoodFormScreen1} />
         <RootStack.Screen name="FoodDetail" component={FoodDetail} />  
         <RootStack.Screen name="FoodEditDetail" component={FoodEditDetail} />
+        <RootStack.Screen name="HistoryDetail" component={HistoryDetail} />
       </RootStack.Navigator>
     </NavigationContainer>
   );
