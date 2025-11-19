@@ -66,3 +66,13 @@ def update_meal(meal_id: int, payload: MealUpdate, db: Session = Depends(get_db)
     db.refresh(meal)
 
     return meal
+
+@router.get("/dates")
+def get_meal_dates(db: Session = Depends(get_db)):
+    rows = (
+        db.query(cast(MealNutrition.created_at, Date).label("d"))
+        .group_by("d")
+        .order_by("d DESC")
+        .all()
+    )
+    return [str(r.d) for r in rows]

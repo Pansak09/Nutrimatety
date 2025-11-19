@@ -2,43 +2,45 @@
 from ultralytics import YOLO
 from pathlib import Path
 
+# ⭐ รายการ class ที่คุณเทรน YOLOv8 ไว้
+CLASS_MAP = [
+    "Fried Rice",
+    "Pad Thai",
+    "Papaya Salad",
+    "Omelet Rice",
+    "Green Curry",
+    "Tom Yum"
+]
+
 _model = None
 
-def _get_model():
+def detect_objects(image_path: str):
     global _model
     if _model is None:
-        _model = YOLO(str(Path(__file__).resolve().parent / "models" / "best.pt"))
-    return _model
+        _model = YOLO("models/best.pt")
 
-def run_infer(input_path: str, results_dir: str):
-    """
-    return: (output_image_path, detections, (orig_w, orig_h))
-    detections = [{cls:int, conf:float, box:[x1,y1,x2,y2]}]
-    """
-    model = _get_model()
-    results = model.predict(
-        source=input_path,
+    results = _model.predict(
+        source=image_path,
         save=True,
-        project=results_dir,
-        name="predict",
+        project="results",
+        name="runs",
         exist_ok=True,
-        conf=0.25
     )
+
     r = results[0]
 
-    # path ของภาพ annotate ที่เซฟโดย YOLO
-    out_path = str(r.plot(save=True)) if hasattr(r, "plot") else str(r.path)
+    detected_classes = []
+    for b in r.boxes:
+        cls_id = int(b.cls[0])
+        conf = float(b.conf[0])
+        name = CLASS_MAP[cls_id] if cls_id < len(CLASS_MAP) else f"class_{cls_id}"
+        detected_classes.append(name)
 
-    dets = []
-    orig_w, orig_h = None, None
-    if getattr(r, "orig_shape", None):
-        orig_h, orig_w = r.orig_shape
+    # ไฟล์ที่ YOLO เซฟไว้หลัง annotate
+    saved_path = Path(r.save_dir) / Path(image_path).name
 
-    if r.boxes is not None:
-        for b in r.boxes:
-            cls = int(b.cls.item())
-            conf = float(b.conf.item())
-            x1, y1, x2, y2 = [float(v) for v in b.xyxy[0].tolist()]
-            dets.append({"cls": cls, "conf": conf, "box": [x1, y1, x2, y2]})
-
-    return out_path, dets, (orig_w or 0, orig_h or 0)
+    return {
+        "filename": saved_path.name,
+        "detected_classes": detected_classes,
+        "confidence": [float(b.conf[0]) for b in r.boxes],
+    }

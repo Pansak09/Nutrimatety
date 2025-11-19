@@ -31,7 +31,7 @@ class Token(BaseModel):
 
 
 # -----------------------
-# Profile
+# Profile (New Updated)
 # -----------------------
 class ProfileBase(BaseModel):
     username: Optional[str] = None
@@ -43,8 +43,7 @@ class ProfileBase(BaseModel):
     goal: Optional[str] = None
     food_allergies: Optional[str] = None
     avatar_url: Optional[str] = None
-    target_calories: Optional[int] = None
-
+    lifestyle: Optional[str] = "light"
 
 class ProfileCreate(ProfileBase):
     pass
@@ -57,7 +56,15 @@ class ProfileUpdate(ProfileBase):
 class ProfileOut(ProfileBase):
     id: int
     user_id: int
+    bmi: Optional[float] = None
+    bmr: Optional[int] = None
+    tdee: Optional[int] = None
+    protein_target: Optional[int] = None
+    carb_target: Optional[int] = None
+    fat_target: Optional[int] = None
+
     model_config = ConfigDict(from_attributes=True)
+
 
 
 # -----------------------
