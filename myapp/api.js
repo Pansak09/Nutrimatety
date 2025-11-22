@@ -6,7 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
    CONFIG: IP ของ Backend FastAPI
    ----------------------------- */
 // ใส่ IPv4 ของเครื่อง Windows
-const WINDOWS_IP = '172.20.10.3'; // <--- แก้ให้ตรงกับเครื่องของคุณ
+const WINDOWS_IP = '172.20.10.3'; 
 
 export const API_BASE = `http://${WINDOWS_IP}:8000`;
 console.log('API_BASE =', API_BASE);

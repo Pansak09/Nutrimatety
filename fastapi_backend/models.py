@@ -90,6 +90,8 @@ class MealNutrition(Base):
     __tablename__ = "meal_nutrition"
 
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+
     name = Column(String, nullable=False)
     protein = Column(Float, nullable=True)
     fat = Column(Float, nullable=True)
@@ -98,3 +100,6 @@ class MealNutrition(Base):
     image_url = Column(String, nullable=True)
     meal_time = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    user = relationship("User")
+

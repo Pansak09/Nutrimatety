@@ -16,9 +16,9 @@ export default function RadialProgressChart({
 }) {
   const screenWidth = Dimensions.get("window").width;
 
-  // ⭐ เพิ่มความหนาของกราฟ strokeWidth = 0.04 (จาก 0.025)
+  // ⭐ ความหนาของกราฟ
   const radius = screenWidth * 0.10;
-  const strokeWidth = screenWidth * 0.04;   // ✅ กราฟหนาขึ้น
+  const strokeWidth = screenWidth * 0.04;
   const circumference = 2 * Math.PI * radius;
 
   const animatedValue = useRef(new Animated.Value(0)).current;
@@ -27,6 +27,7 @@ export default function RadialProgressChart({
   const size = radius * 2 + strokeWidth * 2;
   const progress = Math.min(value / goal, 1);
 
+  /* ===================== Animation ===================== */
   useEffect(() => {
     Animated.timing(animatedValue, {
       toValue: progress * circumference,
@@ -55,13 +56,13 @@ export default function RadialProgressChart({
           fill="transparent"
         />
 
-        {/* วงกลมที่เคลื่อนไหวตามค่า progress */}
+        {/* วงกลม progress */}
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           stroke={color}
-          strokeWidth={strokeWidth}       
+          strokeWidth={strokeWidth}
           strokeDasharray={circumference}
           strokeDashoffset={animatedValue.interpolate({
             inputRange: [0, circumference],
@@ -72,12 +73,14 @@ export default function RadialProgressChart({
         />
       </Svg>
 
-      {/* ซ่อนค่าตัวเลขถ้าสั่ง hideValue */}
+      {/* ⭐ แสดงค่าแบบ X / Y */}
       {!hideValue && (
-        <Text style={[styles.value, { color }]}>{displayValue} g</Text>
+        <Text style={[styles.value, { color }]}>
+          {displayValue} / {goal} g
+        </Text>
       )}
 
-      {/* label (สามารถซ่อนหรือปรับ style ได้) */}
+      {/* Label */}
       {!hideLabel && (
         <Text style={[styles.label, labelStyle]}>{label}</Text>
       )}
@@ -93,10 +96,12 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 15,
     marginTop: 6,
+    textAlign: "center",
   },
   label: {
     color: "#333",
     fontSize: 13,
     marginTop: 4,
+    textAlign: "center",
   },
 });

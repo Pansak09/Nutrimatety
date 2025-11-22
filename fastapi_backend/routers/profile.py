@@ -7,10 +7,9 @@ from auth import get_current_user_email
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-
-# =====================================================================
+# ============================================================================
 # 🟢 CREATE PROFILE
-# =====================================================================
+# ============================================================================
 @router.post("/", response_model=schemas.ProfileOut, status_code=status.HTTP_201_CREATED)
 def create_profile(
     profile: schemas.ProfileCreate,
@@ -26,7 +25,7 @@ def create_profile(
     if exists:
         raise HTTPException(status_code=400, detail="Profile already exists")
 
-    # ตรวจสอบชื่อผู้ใช้ซ้ำ
+    # ตรวจสอบ username ซ้ำ
     if profile.username:
         username_exists = db.query(models.Profile).filter(
             models.Profile.username == profile.username
@@ -34,14 +33,13 @@ def create_profile(
         if username_exists:
             raise HTTPException(status_code=400, detail="Username already taken")
 
-    # สร้างโปรไฟล์ใหม่
     new_profile = crud.create_profile(db, user.id, profile)
     return new_profile
 
 
-# =====================================================================
-# 🟢 READ MY PROFILE
-# =====================================================================
+# ============================================================================
+# 🟢 GET MY PROFILE
+# ============================================================================
 @router.get("/me", response_model=schemas.ProfileOut)
 def read_my_profile(
     db: Session = Depends(get_db),
@@ -56,9 +54,9 @@ def read_my_profile(
     return profile
 
 
-# =====================================================================
+# ============================================================================
 # 🟢 PATCH – UPDATE SOME FIELDS
-# =====================================================================
+# ============================================================================
 @router.patch("/", response_model=schemas.ProfileOut)
 def patch_my_profile(
     profile: schemas.ProfileUpdate,
@@ -71,7 +69,7 @@ def patch_my_profile(
     if not db_profile:
         raise HTTPException(status_code=404, detail="Profile not found")
 
-    # ตรวจสอบ username ซ้ำ (ยกเว้นของตัวเอง)
+    # ตรวจสอบ username ซ้ำ
     if profile.username:
         username_exists = db.query(models.Profile).filter(
             models.Profile.username == profile.username,
@@ -80,13 +78,13 @@ def patch_my_profile(
         if username_exists:
             raise HTTPException(status_code=400, detail="Username already taken")
 
-    updated = crud.patch_profile(db, user.id, profile)
-    return updated
+    updated_profile = crud.patch_profile(db, user.id, profile)
+    return updated_profile
 
 
-# =====================================================================
+# ============================================================================
 # 🟢 PUT – UPDATE ALL FIELDS
-# =====================================================================
+# ============================================================================
 @router.put("/", response_model=schemas.ProfileOut)
 def update_my_profile(
     profile: schemas.ProfileUpdate,
@@ -109,5 +107,5 @@ def update_my_profile(
         if username_exists:
             raise HTTPException(status_code=400, detail="Username already taken")
 
-    updated = crud.update_profile(db, user.id, profile)
-    return updated
+    updated_profile = crud.update_profile(db, user.id, profile)
+    return updated_profile

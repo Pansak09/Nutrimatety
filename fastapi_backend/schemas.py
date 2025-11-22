@@ -96,6 +96,7 @@ class MealCreate(BaseModel):
     image_url: Optional[str] = None
 
 
+
 class MealUpdate(BaseModel):
     name: Optional[str] = None
     protein: Optional[float] = None
@@ -108,14 +109,16 @@ class MealUpdate(BaseModel):
 
 class MealOut(BaseModel):
     id: int
+    user_id: int
     name: str
-    protein: Optional[float] = 0
-    fat: Optional[float] = 0
-    carb: Optional[float] = 0
-    calories: Optional[float] = 0
+    protein: Optional[float]
+    fat: Optional[float]
+    carb: Optional[float]
+    calories: Optional[float]
     meal_time: str
-    image_url: Optional[str] = None
+    image_url: Optional[str]
     created_at: datetime
 
     class Config:
         from_attributes = True
+
