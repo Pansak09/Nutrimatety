@@ -55,7 +55,7 @@ async def _save_upload(file: UploadFile, max_bytes: int = MAX_BYTES) -> Path:
 def _to_url_path(p: Path) -> str:
     return f"/uploads/{p.name}"
 
-# ============ FIXED UPLOAD WITHOUT AUTH =============
+# API UPLOAD ภาพ
 @router.post("/upload")
 async def upload_file(
     file: UploadFile = File(...)

@@ -5,11 +5,7 @@ from auth import get_password_hash
 import math
 from datetime import date
 
-
-# ==========================================
-# 🔹 Helper Functions สำหรับคำนวณค่าโภชนาการ
-# ==========================================
-
+# Helper Functions สำหรับคำนวณค่าโภชนาการ
 def calculate_age(dob: date):
     if not dob:
         return None
@@ -90,13 +86,9 @@ def calc_macro(goal, weight, tdee):
 
     return protein_g, carb_g, fat_g, target_cal
 
-
-# ==========================================
-# 🔹 User CRUD
-# ==========================================
+# User CRUD
 def get_user_by_email(db: Session, email: str):
     return db.query(models.User).filter(models.User.email == email).first()
-
 
 def create_user(db: Session, user: UserCreate):
     hashed_pw = get_password_hash(user.password)
@@ -106,13 +98,9 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-
-# ==========================================
 # 🔹 Profile CRUD
-# ==========================================
 def get_profile_by_user(db: Session, user_id: int):
     return db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
-
 
 def _apply_health_calculation(profile_dict):
     """ทำให้ backend คำนวณค่า BMR / BMI / TDEE / Macro ให้เอง"""

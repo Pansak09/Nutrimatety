@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import cast, Date, desc
+from sqlalchemy import func, desc
 from typing import List, Optional
 from datetime import date
 
@@ -13,7 +13,9 @@ import crud
 router = APIRouter(prefix="/meals", tags=["meals"])
 
 
-# 🟢 Create meal — Automatically attach user_id
+# ------------------------------------------------------------------------------
+# Create Meal (บันทึกอาหารใหม่)
+# ------------------------------------------------------------------------------
 @router.post("", response_model=MealOut)
 def create_meal(
     payload: MealCreate,
@@ -32,7 +34,9 @@ def create_meal(
     return meal
 
 
-# 🟢 Get meals for CURRENT user only
+# ------------------------------------------------------------------------------
+# Get meals by date (แก้แล้ว ใช้ func.date() เพื่อให้เจอวันปัจจุบัน)
+# ------------------------------------------------------------------------------
 @router.get("", response_model=List[MealOut])
 def get_meals(
     date: Optional[date] = Query(None),
@@ -44,13 +48,16 @@ def get_meals(
     query = db.query(MealNutrition).filter(MealNutrition.user_id == user.id)
 
     if date:
-        query = query.filter(cast(MealNutrition.created_at, Date) == date)
+        # ⭐⭐⭐ แก้จุดสำคัญ — ห้ามใช้ cast() ต้องใช้ func.date()
+        query = query.filter(func.date(MealNutrition.created_at) == date)
 
     meals = query.order_by(MealNutrition.created_at.desc()).all()
     return meals
 
 
-# 🟢 Delete meal (only owner can delete)
+# ------------------------------------------------------------------------------
+# Delete Meal
+# ------------------------------------------------------------------------------
 @router.delete("/{meal_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meal(
     meal_id: int,
@@ -76,7 +83,9 @@ def delete_meal(
         raise HTTPException(status_code=500, detail="Error deleting meal")
 
 
-# 🟢 Update meal — only owner's meal
+# ------------------------------------------------------------------------------
+# Update Meal
+# ------------------------------------------------------------------------------
 @router.put("/{meal_id}", response_model=MealOut)
 @router.patch("/{meal_id}", response_model=MealOut)
 def update_meal(
@@ -110,7 +119,9 @@ def update_meal(
         raise HTTPException(status_code=500, detail=f"Error updating meal: {str(e)}")
 
 
-# 🟢 Get unique dates (user only)
+# ------------------------------------------------------------------------------
+# Get meal dates — ให้ HistoryScreen โหลดวันที่ที่เคยบันทึกอาหาร
+# ------------------------------------------------------------------------------
 @router.get("/dates")
 def get_meal_dates(
     db: Session = Depends(get_db),
@@ -119,7 +130,7 @@ def get_meal_dates(
     user = crud.get_user_by_email(db, current_email)
 
     rows = (
-        db.query(cast(MealNutrition.created_at, Date).label("d"))
+        db.query(func.date(MealNutrition.created_at).label("d"))
         .filter(MealNutrition.user_id == user.id)
         .group_by("d")
         .order_by(desc("d"))

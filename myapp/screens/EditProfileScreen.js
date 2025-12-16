@@ -11,6 +11,7 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  Modal
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -45,7 +46,7 @@ export default function EditProfileScreen({ navigation }) {
   const [gender, setGender] = useState(null);
 
   const [dob, setDob] = useState(new Date(2000, 0, 1));
-  const [showPicker, setShowPicker] = useState(false);
+  const [showIOSPicker, setShowIOSPicker] = useState(false);
 
   const [height, setHeight] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
@@ -57,7 +58,7 @@ export default function EditProfileScreen({ navigation }) {
 
   const [avatarUri, setAvatarUri] = useState(null);
 
-  /* ------------------ โหลดข้อมูลจาก Backend ------------------ */
+  /* โหลดข้อมูลผู้ใช้ */
   const fetchMe = useCallback(async () => {
     try {
       setLoading(true);
@@ -91,7 +92,7 @@ export default function EditProfileScreen({ navigation }) {
     fetchMe();
   }, [fetchMe]);
 
-  /* ------------------ เลือกรูปภาพ ------------------ */
+  /* เลือกรูปภาพ */
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted")
@@ -108,7 +109,7 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
-  /* ------------------ บันทึกโปรไฟล์ ------------------ */
+  /*  บันทึกโปรไฟล์ */
   const onSave = async () => {
     if (!username.trim()) return Alert.alert("กรุณากรอก Username");
     if (!gender) return Alert.alert("กรุณาเลือกเพศ");
@@ -119,7 +120,6 @@ export default function EditProfileScreen({ navigation }) {
       setSaving(true);
 
       let finalAvatar = avatarUri;
-
       if (avatarUri && avatarUri.startsWith("file://")) {
         finalAvatar = await uploadAvatar(avatarUri);
       }
@@ -151,7 +151,7 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
-  /* ------------------ UI: Loading ------------------ */
+  /* Loading */
   if (loading) {
     return (
       <View style={[styles.container, styles.centerBox]}>
@@ -169,6 +169,7 @@ export default function EditProfileScreen({ navigation }) {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.container}>
+        
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
@@ -176,15 +177,14 @@ export default function EditProfileScreen({ navigation }) {
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>
             <Text style={styles.headerTitle}>แก้ไขโปรไฟล์</Text>
-            <Text style={styles.headerSubtitle}>
-              อัปเดตข้อมูลให้ตรงกับคุณในวันนี้ 🌿
-            </Text>
+            <Text style={styles.headerSubtitle}>อัปเดตข้อมูลให้ตรงกับคุณในวันนี้ 🌿</Text>
           </View>
           <View style={{ width: 26 }} />
         </View>
 
-        {/* Scroll Content */}
+        {/* Scroll */}
         <ScrollView contentContainerStyle={styles.scrollContent}>
+          
           {/* Avatar */}
           <View style={styles.avatarWrap}>
             {shownAvatar ? (
@@ -203,6 +203,7 @@ export default function EditProfileScreen({ navigation }) {
 
           {/* Card */}
           <View style={styles.card}>
+            
             {/* Username */}
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -216,11 +217,9 @@ export default function EditProfileScreen({ navigation }) {
             {/* Gender */}
             <Text style={styles.label}>เพศ</Text>
             <View style={styles.genderRow}>
+              
               <TouchableOpacity
-                style={[
-                  styles.genderBtn,
-                  gender === "male" && styles.genderActive,
-                ]}
+                style={[styles.genderBtn, gender === "male" && styles.genderActive]}
                 onPress={() => setGender("male")}
               >
                 <Ionicons
@@ -228,21 +227,13 @@ export default function EditProfileScreen({ navigation }) {
                   size={18}
                   color={gender === "male" ? "#fff" : "#1B5E20"}
                 />
-                <Text
-                  style={[
-                    styles.genderText,
-                    gender === "male" && styles.genderTextActive,
-                  ]}
-                >
+                <Text style={[styles.genderText, gender === "male" && styles.genderTextActive]}>
                   ชาย
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[
-                  styles.genderBtn,
-                  gender === "female" && styles.genderActive,
-                ]}
+                style={[styles.genderBtn, gender === "female" && styles.genderActive]}
                 onPress={() => setGender("female")}
               >
                 <Ionicons
@@ -250,15 +241,11 @@ export default function EditProfileScreen({ navigation }) {
                   size={18}
                   color={gender === "female" ? "#fff" : "#D81B60"}
                 />
-                <Text
-                  style={[
-                    styles.genderText,
-                    gender === "female" && styles.genderTextActive,
-                  ]}
-                >
+                <Text style={[styles.genderText, gender === "female" && styles.genderTextActive]}>
                   หญิง
                 </Text>
               </TouchableOpacity>
+
             </View>
 
             {/* Goal */}
@@ -267,18 +254,10 @@ export default function EditProfileScreen({ navigation }) {
               {GOAL_OPTIONS.map((opt) => (
                 <TouchableOpacity
                   key={opt}
-                  style={[
-                    styles.goalOption,
-                    goal === opt && styles.goalOptionActive,
-                  ]}
+                  style={[styles.goalOption, goal === opt && styles.goalOptionActive]}
                   onPress={() => setGoal(opt)}
                 >
-                  <Text
-                    style={[
-                      styles.goalText,
-                      goal === opt && styles.goalTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.goalText, goal === opt && styles.goalTextActive]}>
                     {opt}
                   </Text>
                 </TouchableOpacity>
@@ -289,25 +268,43 @@ export default function EditProfileScreen({ navigation }) {
             <Text style={styles.label}>วันเกิด</Text>
             <TouchableOpacity
               style={[styles.input, styles.dateInput]}
-              onPress={() => setShowPicker(true)}
+              onPress={() => setShowIOSPicker(true)}
             >
               <Ionicons name="calendar-outline" size={18} color="#555" />
-              <Text style={styles.dateText}>
-                {toYMD(dob) || "เลือกวันเกิด"}
-              </Text>
+              <Text style={styles.dateText}>{toYMD(dob)}</Text>
             </TouchableOpacity>
 
-            {showPicker && (
-              <DateTimePicker
-                value={dob}
-                mode="date"
-                maximumDate={new Date()}
-                onChange={(_, val) => {
-                  setShowPicker(false);
-                  if (val) setDob(val);
-                }}
-              />
-            )}
+            <Modal
+              transparent
+              animationType="fade"
+              visible={showIOSPicker}
+              onRequestClose={() => setShowIOSPicker(false)}
+            >
+              <View style={styles.iosPickerOverlay}>
+                <View style={styles.iosPickerBox}>
+                  
+                  <DateTimePicker
+                    value={dob}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    onChange={(event, selectedDate) => {
+                      if (event.type !== "dismissed") {
+                        setDob(selectedDate);
+                      }
+                    }}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.doneBtn}
+                    onPress={() => setShowIOSPicker(false)}
+                  >
+                    <Text style={styles.doneBtnText}>เสร็จสิ้น</Text>
+                  </TouchableOpacity>
+
+                </View>
+              </View>
+            </Modal>
 
             {/* Height */}
             <Text style={styles.label}>ส่วนสูง (cm)</Text>
@@ -362,6 +359,7 @@ export default function EditProfileScreen({ navigation }) {
               placeholder="เช่น กุ้ง, ถั่ว, นมวัว"
               placeholderTextColor="#aaa"
             />
+
           </View>
         </ScrollView>
 
@@ -379,14 +377,12 @@ export default function EditProfileScreen({ navigation }) {
             )}
           </TouchableOpacity>
         </View>
+
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-/* =======================
-   🎨 STYLES
-   ======================= */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#B7FFC7" },
 
@@ -394,6 +390,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   loadingText: {
     marginTop: 12,
     color: "#1B5E20",
@@ -437,6 +434,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
+
   changeBtn: {
     marginTop: 10,
     flexDirection: "row",
@@ -447,11 +445,9 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     borderColor: "#C8E6C9",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
     elevation: 2,
   },
+
   changeBtnText: {
     marginLeft: 6,
     color: "#1B5E20",
@@ -462,10 +458,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 22,
     padding: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
     elevation: 5,
   },
 
@@ -491,6 +483,7 @@ const styles = StyleSheet.create({
     gap: 10,
     marginTop: 4,
   },
+
   genderBtn: {
     flex: 1,
     paddingVertical: 10,
@@ -504,14 +497,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: 6,
   },
+
   genderActive: {
     backgroundColor: "#1B7F5A",
     borderColor: "#1B7F5A",
   },
+
   genderText: {
     color: "#1B5E20",
     fontWeight: "600",
   },
+
   genderTextActive: {
     color: "#FFFFFF",
     fontWeight: "700",
@@ -523,6 +519,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 4,
   },
+
   goalOption: {
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -531,14 +528,17 @@ const styles = StyleSheet.create({
     borderColor: "#C8E6C9",
     backgroundColor: "#F8FFF9",
   },
+
   goalOptionActive: {
     backgroundColor: "#FFB74D",
     borderColor: "#FFB74D",
   },
+
   goalText: {
     fontSize: 13,
     color: "#455A64",
   },
+
   goalTextActive: {
     color: "#FFFFFF",
     fontWeight: "700",
@@ -549,8 +549,42 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
+
   dateText: {
     color: "#333",
+  },
+
+  iosPickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    zIndex: 9999,
+    elevation: 9999,
+  },
+
+  iosPickerBox: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingTop: 10,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
+
+  doneBtn: {
+    marginTop: 10,
+    backgroundColor: "#1B7F5A",
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  doneBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 
   footer: {
@@ -559,17 +593,15 @@ const styles = StyleSheet.create({
     right: 18,
     bottom: 18,
   },
+
   button: {
     backgroundColor: "#1B7F5A",
     paddingVertical: 16,
     borderRadius: 16,
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.22,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
     elevation: 4,
   },
+
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,

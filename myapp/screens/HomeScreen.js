@@ -1,28 +1,44 @@
 // HomeScreen.js
 import React, { useState, useEffect, useCallback } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Modal,
-  Alert, TextInput, ScrollView
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Modal,
+  Alert,
+  TextInput,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { API } from "../api";
 import RadialProgressChart from "../components/RadialProgressChart";
 
-/* ======================================================
-   START
-====================================================== */
-export default function HomeScreen({ navigation }) {
+// key สำหรับเก็บค่าเป้าหมายในเครื่อง
+const GOAL_KEY = "nutrition_goals_v1";
 
+export default function HomeScreen({ navigation }) {
   /* ---------------- STATES ---------------- */
-  const [entriesByMeal, setEntriesByMeal] = useState({ เช้า: [], กลางวัน: [], เย็น: [] });
+  const [entriesByMeal, setEntriesByMeal] = useState({
+    เช้า: [],
+    กลางวัน: [],
+    เย็น: [],
+  });
 
   const [profile, setProfile] = useState(null);
 
+  // ค่าเป้าหมายแบบสำรอง (ใช้ตอนยังคำนวณ TDEE ไม่ได้ หรือไม่ตั้งค่าเอง)
   const [goalKcal, setGoalKcal] = useState(2500);
   const [goalProtein, setGoalProtein] = useState(150);
   const [goalCarb, setGoalCarb] = useState(250);
   const [goalFat, setGoalFat] = useState(70);
+
+  // ใช้บอกว่าตอนนี้ "ใช้ค่าที่ผู้ใช้ตั้งเองอยู่หรือไม่"
+  const [useCustomGoal, setUseCustomGoal] = useState(false);
 
   const [goalModal, setGoalModal] = useState(false);
   const [goalInput, setGoalInput] = useState({
@@ -37,22 +53,68 @@ export default function HomeScreen({ navigation }) {
 
   const [todayText, setTodayText] = useState("");
 
-  /* ---------------- วันที่วันนี้ ---------------- */
+  /* ---------------- ฟังก์ชันวันที่วันนี้ ---------------- */
   const updateTodayText = () => {
     const now = new Date();
     const months = [
-      "มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน",
-      "กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"
+      "มกราคม",
+      "กุมภาพันธ์",
+      "มีนาคม",
+      "เมษายน",
+      "พฤษภาคม",
+      "มิถุนายน",
+      "กรกฎาคม",
+      "สิงหาคม",
+      "กันยายน",
+      "ตุลาคม",
+      "พฤศจิกายน",
+      "ธันวาคม",
     ];
-    setTodayText(`วันนี้ · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`);
+    setTodayText(
+      `วันนี้ · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`
+    );
   };
-
-  useEffect(() => updateTodayText(), []);
 
   const isoToday = () => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
   };
+
+  /* ---------------- โหลด goal ที่เคยตั้งไว้จาก AsyncStorage ---------------- */
+  const loadSavedGoals = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(GOAL_KEY);
+      if (!raw) return;
+
+      const saved = JSON.parse(raw);
+
+      if (saved && typeof saved.kcal === "number") {
+        setUseCustomGoal(saved.useCustom ?? true);
+
+        setGoalKcal(saved.kcal);
+        setGoalProtein(saved.protein ?? 0);
+        setGoalCarb(saved.carb ?? 0);
+        setGoalFat(saved.fat ?? 0);
+
+        setGoalInput({
+          kcal: String(saved.kcal ?? 0),
+          protein: String(saved.protein ?? 0),
+          carb: String(saved.carb ?? 0),
+          fat: String(saved.fat ?? 0),
+        });
+      }
+    } catch (err) {
+      console.log("LOAD GOALS ERROR:", err.message);
+    }
+  };
+
+  useEffect(() => {
+    updateTodayText();
+    loadSavedGoals();
+  }, []);
 
   /* ---------------- โหลดโปรไฟล์ ---------------- */
   const loadProfile = async () => {
@@ -105,8 +167,9 @@ export default function HomeScreen({ navigation }) {
   const totalKcal = allMeals.reduce((s, x) => s + x.kcal, 0);
 
   /* ---------------- คำนวณค่าทางโภชนาการ ---------------- */
+
   const calcAge = (dob) => {
-    if (!dob) return "-";
+    if (!dob) return null;
     const birth = new Date(dob);
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
@@ -115,36 +178,74 @@ export default function HomeScreen({ navigation }) {
     return age;
   };
 
-  const calcBMI = (w, h) => (!w || !h ? "-" : (w / ((h / 100) ** 2)).toFixed(1));
+  const calcBMI = (w, h) =>
+    !w || !h ? "-" : (w / (h / 100) ** 2).toFixed(1);
 
   const calcBMR = (gender, w, h, age) => {
-    if (!w || !h || !age) return "-";
+    if (!w || !h || !age) return null;
     const base = 10 * w + 6.25 * h - 5 * age;
     if (gender === "male") return Math.round(base + 5);
     return Math.round(base - 161);
   };
 
   const calcTDEE = (bmr, lifestyle) => {
-    if (!bmr) return "-";
-    const factor = {
+    if (!bmr || typeof bmr !== "number" || Number.isNaN(bmr)) return null;
+    const factorMap = {
       sedentary: 1.2,
       light: 1.375,
       moderate: 1.55,
       active: 1.725,
       athlete: 1.9,
-    }[lifestyle] || 1.2;
+    };
+    const factor = factorMap[lifestyle] || 1.2;
     return Math.round(bmr * factor);
   };
 
   const age = calcAge(profile?.date_of_birth);
   const bmi = calcBMI(profile?.current_weight, profile?.height);
-  const bmr = calcBMR(profile?.gender, profile?.current_weight, profile?.height, age);
-  const tdee = calcTDEE(bmr, profile?.lifestyle);
+  const bmr = calcBMR(
+    profile?.gender,
+    profile?.current_weight,
+    profile?.height,
+    age
+  );
+  const tdee = calcTDEE(bmr, profile?.lifestyle); // number หรือ null
 
-  /* Macro Targets */
-  const proteinTarget = profile?.protein_target ?? Math.round(tdee * 0.30 / 4);
-  const carbTarget    = profile?.carb_target ?? Math.round(tdee * 0.40 / 4);
-  const fatTarget     = profile?.fat_target ?? Math.round(tdee * 0.30 / 9);
+  // helper สำหรับคำนวณ macro จาก kcal
+  const calcProteinFromKcal = (kcal) => Math.round((kcal * 0.3) / 4);
+  const calcCarbFromKcal = (kcal) => Math.round((kcal * 0.4) / 4);
+  const calcFatFromKcal = (kcal) => Math.round((kcal * 0.3) / 9);
+
+  // base kcal จากระบบ (ถ้ามี TDEE ให้ใช้ก่อน ถ้าไม่มีใช้ goalKcal เดิม)
+  const baseKcal = tdee ?? goalKcal;
+
+  // =========================
+  // เป้าหมายจริงที่ใช้ในกราฟ
+  // =========================
+  const kcalGoal = useCustomGoal ? goalKcal : baseKcal;
+
+  let proteinTarget;
+  let carbTarget;
+  let fatTarget;
+
+  if (useCustomGoal) {
+    // ใช้ค่าที่ผู้ใช้ตั้งเองทั้งหมด
+    proteinTarget = goalProtein;
+    carbTarget = goalCarb;
+    fatTarget = goalFat;
+  } else {
+    // ใช้ค่าจากโปรไฟล์ / คำนวณอัตโนมัติจาก baseKcal
+    proteinTarget =
+      profile?.protein_target ?? calcProteinFromKcal(baseKcal);
+    carbTarget =
+      profile?.carb_target ?? calcCarbFromKcal(baseKcal);
+    fatTarget =
+      profile?.fat_target ?? calcFatFromKcal(baseKcal);
+  }
+
+  // สำหรับแสดงใน InfoRow (ไม่ให้เห็น NaN หรือ "null kcal")
+  const displayBmr = bmr ? `${bmr} kcal` : "-";
+  const displayTdee = tdee ? `${tdee} kcal` : "-";
 
   /* ---------------- UI START ---------------- */
   const openMenuFor = (meal) => {
@@ -152,174 +253,249 @@ export default function HomeScreen({ navigation }) {
     setMenuVisible(true);
   };
 
+  // เปิด modal ตั้งค่าเป้าหมาย → ให้ค่าข้างในช่อง = ค่าเป้าหมายที่ใช้จริงในกราฟ (ค่าหลัง "/")
+  const openGoalModal = () => {
+    setGoalInput({
+      kcal: String(Math.round(kcalGoal || 0)),
+      protein: String(Math.round(proteinTarget || 0)),
+      carb: String(Math.round(carbTarget || 0)),
+      fat: String(Math.round(fatTarget || 0)),
+    });
+    setGoalModal(true);
+  };
+
+  // กดบันทึกค่าเป้าหมาย
+  const onSaveGoal = async () => {
+    const newKcal = Number(goalInput.kcal) || 0;
+    const newProtein = Number(goalInput.protein) || 0;
+    const newCarb = Number(goalInput.carb) || 0;
+    const newFat = Number(goalInput.fat) || 0;
+
+    setGoalKcal(newKcal);
+    setGoalProtein(newProtein);
+    setGoalCarb(newCarb);
+    setGoalFat(newFat);
+    setUseCustomGoal(true);
+
+    try {
+      await AsyncStorage.setItem(
+        GOAL_KEY,
+        JSON.stringify({
+          useCustom: true,
+          kcal: newKcal,
+          protein: newProtein,
+          carb: newCarb,
+          fat: newFat,
+        })
+      );
+    } catch (err) {
+      console.log("SAVE GOALS ERROR:", err.message);
+    }
+
+    setGoalModal(false);
+  };
+
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#D5FFE3" }}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
+      >
+        {/* =====================================================
+            Section: พลังงานรวมวันนี้
+        ===================================================== */}
+        <Text style={styles.sectionHeader}>พลังงานรวมวันนี้</Text>
 
-      {/* =====================================================
-          Section: พลังงานรวมวันนี้
-      ===================================================== */}
-      <Text style={styles.sectionHeader}>พลังงานรวมวันนี้</Text>
+        <View style={styles.energyCard}>
+          <RadialProgressChart
+            size={160}
+            value={totalKcal}
+            goal={kcalGoal}
+            color="#FF6B6B"
+            hideValue={true}
+            hideLabel={true}
+          />
 
-      <View style={styles.energyCard}>
-        <RadialProgressChart
-          size={160}
-          value={totalKcal}
-          goal={goalKcal}
-          color="#FF6B6B"
-          hideValue={true}
-          hideLabel={true}
+          <View style={styles.energyInfo}>
+            <Text style={styles.todayText}>{todayText}</Text>
+            <Text style={styles.kcalBig}>
+              {Math.round(totalKcal)} / {Math.round(kcalGoal || 0)}
+            </Text>
+            <Text style={styles.kcalUnit}>kcal</Text>
+
+            <TouchableOpacity
+              style={styles.goalBtn}
+              onPress={openGoalModal}
+            >
+              <Ionicons name="settings-outline" size={18} color="#333" />
+              <Text style={styles.goalBtnText}>ตั้งค่าเป้าหมาย</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* =====================================================
+            Section: สรุปโภชนาการวันนี้
+        ===================================================== */}
+        <Text style={styles.sectionHeader}>สรุปโภชนาการวันนี้</Text>
+
+        <View style={styles.macroRow}>
+          <MacroBox
+            label="โปรตีน"
+            color="#4A90E2"
+            value={totalProtein}
+            goal={proteinTarget || 0}
+          />
+          <MacroBox
+            label="คาร์บ"
+            color="#F5C542"
+            value={totalCarb}
+            goal={carbTarget || 0}
+          />
+          <MacroBox
+            label="ไขมัน"
+            color="#FF4FA7"
+            value={totalFat}
+            goal={fatTarget || 0}
+          />
+        </View>
+
+        {/* =====================================================
+            Section: บันทึกรายการอาหาร
+        ===================================================== */}
+        <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
+          บันทึกรายการอาหาร
+        </Text>
+
+        <MealButton
+          title="🍳 มื้อเช้า"
+          color="#FFE7C7"
+          onPress={() => openMenuFor("เช้า")}
+        />
+        <MealButton
+          title="🍛 มื้อกลางวัน"
+          color="#FFF0D1"
+          onPress={() => openMenuFor("กลางวัน")}
+        />
+        <MealButton
+          title="🍲 มื้อเย็น"
+          color="#FFD7D7"
+          onPress={() => openMenuFor("เย็น")}
         />
 
-        <View style={styles.energyInfo}>
-          <Text style={styles.todayText}>{todayText}</Text>
-          <Text style={styles.kcalBig}>{totalKcal} / {goalKcal}</Text>
-          <Text style={styles.kcalUnit}>kcal</Text>
-
-          <TouchableOpacity style={styles.goalBtn} onPress={() => setGoalModal(true)}>
-            <Ionicons name="settings-outline" size={18} color="#333" />
-            <Text style={styles.goalBtnText}>ตั้งค่าเป้าหมาย</Text>
-          </TouchableOpacity>
+        {/* =====================================================
+            Section: ค่าทางโภชนาการ
+        ===================================================== */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>ค่าทางโภชนาการของคุณ</Text>
+          <InfoRow label="BMI" value={bmi} />
+          <InfoRow label="BMR" value={displayBmr} />
+          <InfoRow label="TDEE" value={displayTdee} />
         </View>
-      </View>
 
-      {/* =====================================================
-          Section: สรุปโภชนาการวันนี้
-      ===================================================== */}
-      <Text style={styles.sectionHeader}>สรุปโภชนาการวันนี้</Text>
+        {/* =====================================================
+            Section: โภชนาการที่ควรได้รับต่อวัน
+        ===================================================== */}
+        <View style={styles.infoCard}>
+          <Text style={styles.infoTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
+          <InfoRow
+            label="พลังงานรวม"
+            value={kcalGoal ? `${Math.round(kcalGoal)} kcal` : "-"}
+          />
+          <InfoRow label="โปรตีน" value={`${Math.round(proteinTarget || 0)} g`} />
+          <InfoRow label="คาร์โบไฮเดรต" value={`${Math.round(carbTarget || 0)} g`} />
+          <InfoRow label="ไขมัน" value={`${Math.round(fatTarget || 0)} g`} />
+        </View>
 
-      <View style={styles.macroRow}>
-        <MacroBox label="โปรตีน" color="#4A90E2" value={totalProtein} goal={goalProtein} />
-        <MacroBox label="คาร์บ"   color="#F5C542" value={totalCarb}   goal={goalCarb} />
-        <MacroBox label="ไขมัน"   color="#FF4FA7" value={totalFat}    goal={goalFat} />
-      </View>
+        {/* =====================================================
+            POPUP: ตั้งค่าเป้าหมาย (สำรอง + override ได้)
+        ===================================================== */}
+        <Modal transparent visible={goalModal} animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalBox}>
+              <Text style={styles.modalTitle}>ตั้งค่าเป้าหมาย</Text>
 
-      {/* =====================================================
-          Section: บันทึกรายการอาหาร
-      ===================================================== */}
-      <Text style={[styles.sectionHeader, { marginTop: 10 }]}>บันทึกรายการอาหาร</Text>
+              <GoalInput
+                label="พลังงาน (kcal)"
+                value={goalInput.kcal}
+                onChange={(v) => setGoalInput({ ...goalInput, kcal: v })}
+              />
 
-      <MealButton title="🍳 มื้อเช้า"    color="#FFE7C7" onPress={() => openMenuFor("เช้า")} />
-      <MealButton title="🍛 มื้อกลางวัน" color="#FFF0D1" onPress={() => openMenuFor("กลางวัน")} />
-      <MealButton title="🍲 มื้อเย็น"    color="#FFD7D7" onPress={() => openMenuFor("เย็น")} />
+              <GoalInput
+                label="โปรตีน (g)"
+                value={goalInput.protein}
+                onChange={(v) => setGoalInput({ ...goalInput, protein: v })}
+              />
 
-      {/* =====================================================
-          Section: ค่าทางโภชนาการ
-      ===================================================== */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>ค่าทางโภชนาการของคุณ</Text>
-        <InfoRow label="BMI" value={bmi} />
-        <InfoRow label="BMR" value={`${bmr} kcal`} />
-        <InfoRow label="TDEE" value={`${tdee} kcal`} />
-      </View>
+              <GoalInput
+                label="คาร์โบไฮเดรต (g)"
+                value={goalInput.carb}
+                onChange={(v) => setGoalInput({ ...goalInput, carb: v })}
+              />
 
-      {/* =====================================================
-          Section: โภชนาการที่ควรได้รับต่อวัน
-      ===================================================== */}
-      <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
-        <InfoRow label="พลังงานรวม" value={`${tdee} kcal`} />
-        <InfoRow label="โปรตีน" value={`${proteinTarget} g`} />
-        <InfoRow label="คาร์โบไฮเดรต" value={`${carbTarget} g`} />
-        <InfoRow label="ไขมัน" value={`${fatTarget} g`} />
-      </View>
+              <GoalInput
+                label="ไขมัน (g)"
+                value={goalInput.fat}
+                onChange={(v) => setGoalInput({ ...goalInput, fat: v })}
+              />
 
-      {/* =====================================================
-          POPUP: ตั้งค่าเป้าหมาย
-      ===================================================== */}
-      <Modal transparent visible={goalModal} animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
+              <TouchableOpacity
+                style={styles.saveBtn}
+                onPress={onSaveGoal}
+              >
+                <Text style={styles.saveText}>✔ บันทึกเป้าหมาย</Text>
+              </TouchableOpacity>
 
-            <Text style={styles.modalTitle}>ตั้งค่าเป้าหมาย</Text>
-
-            <GoalInput label="พลังงาน (kcal)"
-              value={goalInput.kcal}
-              onChange={(v)=>setGoalInput({...goalInput, kcal:v})}
-            />
-
-            <GoalInput label="โปรตีน (g)"
-              value={goalInput.protein}
-              onChange={(v)=>setGoalInput({...goalInput, protein:v})}
-            />
-
-            <GoalInput label="คาร์โบไฮเดรต (g)"
-              value={goalInput.carb}
-              onChange={(v)=>setGoalInput({...goalInput, carb:v})}
-            />
-
-            <GoalInput label="ไขมัน (g)"
-              value={goalInput.fat}
-              onChange={(v)=>setGoalInput({...goalInput, fat:v})}
-            />
-
-            <TouchableOpacity
-              style={styles.saveBtn}
-              onPress={()=>{
-                setGoalKcal(Number(goalInput.kcal));
-                setGoalProtein(Number(goalInput.protein));
-                setGoalCarb(Number(goalInput.carb));
-                setGoalFat(Number(goalInput.fat));
-                setGoalModal(false);
-              }}
-            >
-              <Text style={styles.saveText}>✔ บันทึกเป้าหมาย</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.closeBtn} onPress={()=>setGoalModal(false)}>
-              <Text style={styles.closeText}>ปิด</Text>
-            </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.closeBtn}
+                onPress={() => setGoalModal(false)}
+              >
+                <Text style={styles.closeText}>ปิด</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* =====================================================
-          POPUP: เพิ่มรายการอาหาร
-      ===================================================== */}
-      <Modal transparent visible={menuVisible} animationType="fade">
-        <View style={styles.overlayAdd}>
-          <View style={styles.addBox}>
+        {/* =====================================================
+            POPUP: เพิ่มรายการอาหาร
+        ===================================================== */}
+        <Modal transparent visible={menuVisible} animationType="fade">
+          <View style={styles.overlayAdd}>
+            <View style={styles.addBox}>
+              <Text style={styles.addTitle}>เพิ่มรายการ • {selectedMeal}</Text>
 
-            <Text style={styles.addTitle}>
-              เพิ่มรายการ • {selectedMeal}
-            </Text>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: "#E8F1FF" }]}
+                onPress={() => {
+                  setMenuVisible(false);
+                  navigation.navigate("FoodForm1", { meal: selectedMeal });
+                }}
+              >
+                <Ionicons name="create-outline" color="#3A7BFF" size={22} />
+                <Text style={styles.addText}>กรอกด้วยตัวเอง</Text>
+              </TouchableOpacity>
 
-            {/* ปุ่มกรอกเอง */}
-            <TouchableOpacity
-              style={[styles.addBtn, { backgroundColor: "#E8F1FF" }]}
-              onPress={() => {
-                setMenuVisible(false);
-                navigation.navigate("FoodForm1", { meal: selectedMeal });
-              }}
-            >
-              <Ionicons name="create-outline" color="#3A7BFF" size={22} />
-              <Text style={styles.addText}>กรอกด้วยตัวเอง</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.addBtn, { backgroundColor: "#EFFFF1" }]}
+                onPress={() => {
+                  setMenuVisible(false);
+                  navigation.navigate("Camera", { meal: selectedMeal });
+                }}
+              >
+                <Ionicons name="camera-outline" color="#34C759" size={22} />
+                <Text style={styles.addText}>ถ่ายภาพ • วิเคราะห์อาหาร</Text>
+              </TouchableOpacity>
 
-            {/* ปุ่มถ่ายภาพ */}
-            <TouchableOpacity
-              style={[styles.addBtn, { backgroundColor: "#EFFFF1" }]}
-              onPress={() => {
-                setMenuVisible(false);
-                navigation.navigate("Camera", { meal: selectedMeal });
-              }}
-            >
-              <Ionicons name="camera-outline" color="#34C759" size={22} />
-              <Text style={styles.addText}>ถ่ายภาพ • วิเคราะห์อาหาร</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.addClose}
-              onPress={() => setMenuVisible(false)}
-            >
-              <Text style={styles.addCloseText}>ปิด</Text>
-            </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.addClose}
+                onPress={() => setMenuVisible(false)}
+              >
+                <Text style={styles.addCloseText}>ปิด</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </Modal>
-
-    </ScrollView>
+        </Modal>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -360,7 +536,10 @@ function InfoRow({ label, value }) {
 
 function MealButton({ title, onPress, color }) {
   return (
-    <TouchableOpacity style={[styles.mealButton, { backgroundColor: color }]} onPress={onPress}>
+    <TouchableOpacity
+      style={[styles.mealButton, { backgroundColor: color }]}
+      onPress={onPress}
+    >
       <Text style={styles.mealText}>{title}</Text>
       <Ionicons name="chevron-forward" size={20} color="#555" />
     </TouchableOpacity>
@@ -398,7 +577,12 @@ const styles = StyleSheet.create({
   kcalUnit: { color: "#666", marginTop: -6, fontSize: 16 },
 
   goalBtn: { flexDirection: "row", alignItems: "center", marginTop: 10 },
-  goalBtnText: { marginLeft: 5, fontSize: 14, fontWeight: "600", color: "#333" },
+  goalBtnText: {
+    marginLeft: 5,
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#333",
+  },
 
   /* Macro Row */
   macroRow: {
@@ -454,7 +638,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space_between",
     elevation: 2,
   },
 

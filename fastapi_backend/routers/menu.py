@@ -8,6 +8,7 @@ from sqlalchemy import or_
 
 router = APIRouter()
 
+# API: ดึงเมนูโดยค้นหาชื่อไทย/อังกฤษ
 @router.get("/menu", response_model=List[MenuOut])
 def search_menu(search: str = Query(...), db: Session = Depends(get_db)):
     return db.query(Menu).filter(

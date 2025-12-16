@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ScrollView, KeyboardAvoidingView, Platform, Image
+  Alert, ScrollView, KeyboardAvoidingView, Platform, Image, Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,12 +16,15 @@ export default function CreateProfileScreen({ navigation }) {
 
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState(null);
+
   const [dob, setDob] = useState(new Date(2000, 0, 1));
   const [showPicker, setShowPicker] = useState(false);
+
   const [height, setHeight] = useState('');
   const [currentWeight, setCurrentWeight] = useState('');
   const [foodAllergies, setFoodAllergies] = useState('');
   const [goalChoice, setGoalChoice] = useState(null);
+
   const [avatarUri, setAvatarUri] = useState(null);
 
   const pickImage = async () => {
@@ -90,6 +93,7 @@ export default function CreateProfileScreen({ navigation }) {
 
           {/* Card */}
           <View style={styles.card}>
+
             {/* Username */}
             <Text style={styles.label}>Username</Text>
             <TextInput
@@ -122,17 +126,38 @@ export default function CreateProfileScreen({ navigation }) {
               <Text>{toYMD(dob)}</Text>
             </TouchableOpacity>
 
-            {showPicker && (
-              <DateTimePicker
-                value={dob}
-                mode="date"
-                maximumDate={new Date()}
-                onChange={(_, sel) => {
-                  setShowPicker(false);
-                  if (sel) setDob(sel);
-                }}
-              />
-            )}
+            {/* iOS Modal Picker แบบเดียวกับ EditProfileScreen */}
+            <Modal
+              transparent
+              animationType="fade"
+              visible={showPicker}
+              onRequestClose={() => setShowPicker(false)}
+            >
+              <View style={styles.iosPickerOverlay}>
+                <View style={styles.iosPickerBox}>
+
+                  <DateTimePicker
+                    value={dob}
+                    mode="date"
+                    display="spinner"
+                    maximumDate={new Date()}
+                    onChange={(event, selectedDate) => {
+                      if (event.type !== "dismissed") {
+                        setDob(selectedDate);
+                      }
+                    }}
+                  />
+
+                  <TouchableOpacity
+                    style={styles.doneBtn}
+                    onPress={() => setShowPicker(false)}
+                  >
+                    <Text style={styles.doneBtnText}>เสร็จสิ้น</Text>
+                  </TouchableOpacity>
+
+                </View>
+              </View>
+            </Modal>
 
             {/* Height */}
             <Text style={styles.label}>ส่วนสูง (cm)</Text>
@@ -178,6 +203,7 @@ export default function CreateProfileScreen({ navigation }) {
                 <Text style={styles.optionLabel}>{opt}</Text>
               </TouchableOpacity>
             ))}
+
           </View>
         </ScrollView>
 
@@ -187,14 +213,12 @@ export default function CreateProfileScreen({ navigation }) {
             <Text style={styles.buttonText}>ถัดไป</Text>
           </TouchableOpacity>
         </View>
+
       </View>
     </KeyboardAvoidingView>
   );
 }
 
-// ======================
-// 💅 BEAUTIFUL STYLES
-// ======================
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#B7FFC7" },
 
@@ -251,7 +275,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     borderRadius: 18,
     padding: 20,
-
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -294,7 +317,6 @@ const styles = StyleSheet.create({
   },
 
   genderText: { color: "#333", fontWeight: "600" },
-
   genderTextActive: { color: "#fff", fontWeight: "700" },
 
   option: {
@@ -326,6 +348,39 @@ const styles = StyleSheet.create({
   radioSelected: {
     borderColor: "#1B7F5A",
     backgroundColor: "#1B7F5A",
+  },
+
+  iosPickerOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+    zIndex: 9999,
+    elevation: 9999,
+  },
+
+  iosPickerBox: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingTop: 10,
+    paddingBottom: 20,
+    alignItems: "center",
+  },
+
+  doneBtn: {
+    marginTop: 10,
+    backgroundColor: "#1B7F5A",
+    paddingHorizontal: 25,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+
+  doneBtnText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 16,
   },
 
   footer: {

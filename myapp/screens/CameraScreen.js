@@ -11,7 +11,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { API_BASE, detect } from '../api';
 
-// ⭐ ล้างชื่อ เช่น "Omelet Rice 0.83" → "Omelet Rice"
+// "Omelet Rice 0.83" = "Omelet Rice"
 function cleanFoodName(name) {
   if (!name) return "";
   if (/^[0-9.]+$/.test(name)) return ""; // ถ้าชื่อเป็นตัวเลขล้วน
@@ -97,7 +97,7 @@ export default function CameraScreen() {
 
       console.log("📡 YOLO Raw:", data);
 
-      // ⭐ ใช้ชื่อจาก FastAPI โดยตรง
+      // ใช้ชื่อจาก FastAPI โดยตรง
       let rawName = data?.name || "";
 
       console.log("📡 Raw name:", rawName);

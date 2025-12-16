@@ -7,9 +7,7 @@ from auth import get_current_user_email
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
-# ============================================================================
-# 🟢 CREATE PROFILE
-# ============================================================================
+# CREATE PROFILE สร้างโปรไฟล์ใหม่
 @router.post("/", response_model=schemas.ProfileOut, status_code=status.HTTP_201_CREATED)
 def create_profile(
     profile: schemas.ProfileCreate,
@@ -36,10 +34,7 @@ def create_profile(
     new_profile = crud.create_profile(db, user.id, profile)
     return new_profile
 
-
-# ============================================================================
-# 🟢 GET MY PROFILE
-# ============================================================================
+# GET MY PROFILE (ดึงโปรไฟล์ของตัวเอง)
 @router.get("/me", response_model=schemas.ProfileOut)
 def read_my_profile(
     db: Session = Depends(get_db),
@@ -53,10 +48,7 @@ def read_my_profile(
 
     return profile
 
-
-# ============================================================================
-# 🟢 PATCH – UPDATE SOME FIELDS
-# ============================================================================
+# PATCH – UPDATE SOME FIELDS (อัปเดตบางฟิลด์)
 @router.patch("/", response_model=schemas.ProfileOut)
 def patch_my_profile(
     profile: schemas.ProfileUpdate,
@@ -81,10 +73,7 @@ def patch_my_profile(
     updated_profile = crud.patch_profile(db, user.id, profile)
     return updated_profile
 
-
-# ============================================================================
-# 🟢 PUT – UPDATE ALL FIELDS
-# ============================================================================
+# PUT – UPDATE ALL FIELDS (อัปเดตฟิลด์ทั้งหมด)
 @router.put("/", response_model=schemas.ProfileOut)
 def update_my_profile(
     profile: schemas.ProfileUpdate,

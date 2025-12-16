@@ -16,7 +16,15 @@ export default function HistoryScreen({ navigation }) {
     generateHistoryDates();
   }, []);
 
-  // สร้างรายชื่อวันที่ย้อนหลัง 14 วัน
+  // ⭐ สร้างวันที่ย้อนหลังแบบ Local (ไม่ใช้ toISOString)
+  const formatDateLocal = (d) => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  // ⭐ สร้างรายชื่อวันที่ย้อนหลัง 14 วัน
   const generateHistoryDates = () => {
     const list = [];
     const today = new Date();
@@ -25,7 +33,7 @@ export default function HistoryScreen({ navigation }) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
 
-      const iso = d.toISOString().split("T")[0];
+      const iso = formatDateLocal(d);  // ← ใช้ฟังก์ชันใหม่ ไม่เลื่อนวัน
 
       const thaiDate = d.toLocaleDateString("th-TH", {
         day: "numeric",
@@ -92,14 +100,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     marginBottom: 12,
-
     flexDirection: "row",
     alignItems: "center",
-
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
 

@@ -16,7 +16,6 @@ export default function RadialProgressChart({
 }) {
   const screenWidth = Dimensions.get("window").width;
 
-  // ⭐ ความหนาของกราฟ
   const radius = screenWidth * 0.10;
   const strokeWidth = screenWidth * 0.04;
   const circumference = 2 * Math.PI * radius;
@@ -25,9 +24,9 @@ export default function RadialProgressChart({
   const [displayValue, setDisplayValue] = useState(0);
 
   const size = radius * 2 + strokeWidth * 2;
-  const progress = Math.min(value / goal, 1);
+  const progress = Math.min(goal > 0 ? value / goal : 0, 1);
 
-  /* ===================== Animation ===================== */
+  /* Animation */
   useEffect(() => {
     Animated.timing(animatedValue, {
       toValue: progress * circumference,
@@ -36,7 +35,8 @@ export default function RadialProgressChart({
     }).start();
 
     const id = animatedValue.addListener(({ value }) => {
-      setDisplayValue(Math.round((value / circumference) * goal));
+      const current = goal > 0 ? (value / circumference) * goal : 0;
+      setDisplayValue(current);
     });
 
     return () => animatedValue.removeListener(id);
@@ -45,8 +45,8 @@ export default function RadialProgressChart({
   return (
     <View style={styles.item}>
       <Svg width={size} height={size}>
-
-        {/* วงกลมพื้นหลัง */}
+        
+        {/* วงกลมเทา (พื้นหลัง) */}
         <Circle
           cx={size / 2}
           cy={size / 2}
@@ -56,7 +56,7 @@ export default function RadialProgressChart({
           fill="transparent"
         />
 
-        {/* วงกลม progress */}
+        {/* วงกลมสี (progress) */}
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
@@ -73,10 +73,10 @@ export default function RadialProgressChart({
         />
       </Svg>
 
-      {/* ⭐ แสดงค่าแบบ X / Y */}
+      {/* ค่าแสดงผล */}
       {!hideValue && (
         <Text style={[styles.value, { color }]}>
-          {displayValue} / {goal} g
+          {Math.round(displayValue)} / {Math.round(goal)}
         </Text>
       )}
 
@@ -89,9 +89,7 @@ export default function RadialProgressChart({
 }
 
 const styles = StyleSheet.create({
-  item: {
-    alignItems: "center",
-  },
+  item: { alignItems: "center" },
   value: {
     fontWeight: "bold",
     fontSize: 15,

@@ -3,9 +3,13 @@ import {
   View, Text, Image, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, useWindowDimensions
 } from "react-native";
+
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API } from "../api";
+
+// ⭐ เพิ่ม SafeAreaView
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -101,13 +105,13 @@ export default function ProfileScreen() {
     return age;
   };
 
-  const calcBMI = (w, h) => (!w || !h ? "-" : (w / ((h / 100) ** 2)).toFixed(1));
+  const calcBMI = (w, h) =>
+    !w || !h ? "-" : (w / ((h / 100) ** 2)).toFixed(1);
 
   const calcBMR = (gender, w, h, age) => {
     if (!w || !h || !age) return "-";
     const base = 10 * w + 6.25 * h - 5 * age;
-    if (gender === "male") return Math.round(base + 5);
-    return Math.round(base - 161);
+    return gender === "male" ? Math.round(base + 5) : Math.round(base - 161);
   };
 
   const calcTDEE = (bmr, lifestyle) => {
@@ -122,20 +126,20 @@ export default function ProfileScreen() {
     return Math.round(bmr * factor);
   };
 
-  /* ---------------- If loading ---------------- */
+  /* ---------------- Loading ---------------- */
   if (loading) {
     return (
-      <View style={styles.loadingBox}>
+      <SafeAreaView style={styles.safeLoading}>
         <ActivityIndicator size="large" color="#1B7F5A" />
         <Text style={{ marginTop: 12, color: "#1B7F5A" }}>กำลังโหลดข้อมูล...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   /* ---------------- Error ---------------- */
   if (err) {
     return (
-      <View style={styles.errorBox}>
+      <SafeAreaView style={styles.safeError}>
         <Text style={styles.errorText}>{err}</Text>
 
         <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()}>
@@ -145,32 +149,30 @@ export default function ProfileScreen() {
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>ออกจากระบบ</Text>
         </TouchableOpacity>
-      </View>
+      </SafeAreaView>
     );
   }
 
-  /* ---------------- Avatar ---------------- */
+  /* ---------------- Avatar & Calculations ---------------- */
   const avatarUri = buildURL(profile?.avatar_url);
-
-  /* ---------------- Calculate ---------------- */
   const age = calcAge(profile?.date_of_birth);
   const bmi = calcBMI(profile?.current_weight, profile?.height);
   const bmr = calcBMR(profile?.gender, profile?.current_weight, profile?.height, age);
   const tdee = calcTDEE(bmr, profile?.lifestyle || "light");
 
-  /* Macro Targets (ถ้า backend ไม่ส่งมาก็ใช้สูตร fallback) */
   const proteinTarget = profile?.protein_target ?? Math.round(tdee * 0.30 / 4);
   const carbTarget    = profile?.carb_target ?? Math.round(tdee * 0.40 / 4);
   const fatTarget     = profile?.fat_target ?? Math.round(tdee * 0.30 / 9);
 
-  /* ---------------- UI ---------------- */
+  /* =====================================================
+     MAIN UI
+     ===================================================== */
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
 
         {/* ================= Header ================= */}
         <View style={styles.profileCard}>
-
           <View style={styles.headerRow}>
             {avatarUri ? (
               <Image
@@ -181,10 +183,12 @@ export default function ProfileScreen() {
                 ]}
               />
             ) : (
-              <View style={[
-                styles.avatarPlaceholder,
-                { width: width * 0.27, height: width * 0.27 }
-              ]}>
+              <View
+                style={[
+                  styles.avatarPlaceholder,
+                  { width: width * 0.27, height: width * 0.27 }
+                ]}
+              >
                 <Text style={styles.avatarPlaceholderText}>No Image</Text>
               </View>
             )}
@@ -203,7 +207,7 @@ export default function ProfileScreen() {
               </Text>
 
               <Text style={styles.goalChip}>
-                🏋🏻‍♂ Lifestyle: {profile?.lifestyle || "light"}
+                🏋 Lifestyle: {profile?.lifestyle || "light"}
               </Text>
             </View>
 
@@ -250,7 +254,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -268,43 +272,78 @@ function InfoRow({ label, value }) {
    🎨 UI STYLES (Premium Health App)
    =========================================================== */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#C9FFE2" },
-
-  loadingBox: {
-    flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#C9FFE2"
+  safe: {
+    flex: 1,
+    backgroundColor: "#C9FFE2",
   },
 
-  errorBox: {
-    flex: 1, justifyContent: "center", alignItems: "center", padding: 30, backgroundColor: "#C9FFE2"
+  safeLoading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#C9FFE2",
+  },
+
+  safeError: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 30,
+    backgroundColor: "#C9FFE2",
+  },
+
+  container: {
+    flex: 1,
+    backgroundColor: "#C9FFE2",
+  },
+
+  loadingBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 
   errorText: {
-    color: "#d33", fontSize: 18, marginBottom: 16, textAlign: "center", fontWeight: "600"
+    color: "#d33", fontSize: 18,
+    marginBottom: 16, textAlign: "center",
+    fontWeight: "600"
   },
 
   retryBtn: {
-    backgroundColor: "#1B7F5A", paddingVertical: 12, paddingHorizontal: 30,
-    borderRadius: 14, marginBottom: 10
+    backgroundColor: "#1B7F5A",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 14,
+    marginBottom: 10
   },
-  retryText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  retryText: {
+    color: "#fff", fontWeight: "700", fontSize: 16
+  },
 
   logoutBtn: {
-    backgroundColor: "#FF5555", paddingVertical: 12,
-    paddingHorizontal: 30, borderRadius: 14
+    backgroundColor: "#FF5555",
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 14
   },
   logoutText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
   profileCard: {
-    backgroundColor: "#FFFFFF", padding: 20, borderRadius: 22,
-    marginBottom: 18, shadowColor: "#000", shadowOpacity: 0.06,
+    backgroundColor: "#FFFFFF", padding: 20,
+    borderRadius: 22, marginBottom: 18,
+    shadowColor: "#000", shadowOpacity: 0.06,
     shadowRadius: 8, elevation: 3
   },
 
-  headerRow: { flexDirection: "row", alignItems: "center" },
+  headerRow: {
+    flexDirection: "row", alignItems: "center"
+  },
 
   avatarPlaceholder: {
-    backgroundColor: "#E0E0E0", justifyContent: "center",
-    alignItems: "center", borderRadius: 100
+    backgroundColor: "#E0E0E0",
+    justifyContent: "center",
+    alignItems: "center",
+    borderRadius: 100
   },
 
   avatarPlaceholderText: { color: "#666" },
@@ -315,41 +354,59 @@ const styles = StyleSheet.create({
   email: { color: "#555", marginTop: 4 },
 
   goalChip: {
-    marginTop: 6, backgroundColor: "#E4FFE6",
-    paddingVertical: 4, paddingHorizontal: 10,
-    borderRadius: 12, color: "#1B7F5A", fontWeight: "700"
+    marginTop: 6,
+    backgroundColor: "#E4FFE6",
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    color: "#1B7F5A",
+    fontWeight: "700"
   },
 
   editBtn: {
-    backgroundColor: "#1B7F5A", paddingVertical: 6,
-    paddingHorizontal: 16, borderRadius: 10
+    backgroundColor: "#1B7F5A",
+    paddingVertical: 6,
+    paddingHorizontal: 16,
+    borderRadius: 10
   },
   editText: { color: "#fff", fontWeight: "700" },
 
   infoCard: {
-    backgroundColor: "#FFFFFF", borderRadius: 22,
-    padding: 20, marginBottom: 20, elevation: 3
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 20,
+    elevation: 3
   },
 
   sectionTitle: {
-    fontSize: 18, fontWeight: "700", marginBottom: 12, color: "#333"
+    fontSize: 18,
+    fontWeight: "700",
+    marginBottom: 12,
+    color: "#333"
   },
 
   row: {
-    flexDirection: "row", justifyContent: "space-between",
-    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: "#EEE"
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#EEE"
   },
 
   rowLabel: { color: "#333", fontWeight: "600" },
   rowValue: { fontWeight: "700", color: "#1A4D3E" },
 
   logoutBtnBottom: {
-    backgroundColor: "#FF6464", paddingVertical: 16,
-    borderRadius: 14, marginTop: 22
+    backgroundColor: "#FF6464",
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 22
   },
 
   logoutBottomText: {
     color: "#fff", fontWeight: "800",
-    textAlign: "center", fontSize: 17
+    textAlign: "center",
+    fontSize: 17
   },
 });
