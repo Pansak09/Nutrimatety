@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import date
 
 from database import get_db
-from models import MealNutrition
+from models import MealNutrition, Menu
 from schemas import MealCreate, MealOut, MealUpdate
 from auth import get_current_user_email
 import crud
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/meals", tags=["meals"])
 
 
 # ------------------------------------------------------------------------------
-# Create Meal (บันทึกอาหารใหม่)
+# Create Meal (ใช้ menu_id เต็มรูปแบบ)
 # ------------------------------------------------------------------------------
 @router.post("", response_model=MealOut)
 def create_meal(
@@ -23,19 +23,61 @@ def create_meal(
     current_email: str = Depends(get_current_user_email),
 ):
     user = crud.get_user_by_email(db, current_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
 
-    meal = MealNutrition(
-        user_id=user.id,
-        **payload.dict()
-    )
-    db.add(meal)
-    db.commit()
-    db.refresh(meal)
-    return meal
+    # normalize ชื่ออาหาร
+    food_name = payload.name.strip()
+    food_name_lower = food_name.lower()
+
+    try:
+        # หา menu
+        menu = (
+            db.query(Menu)
+            .filter(func.lower(Menu.food_name) == food_name_lower)
+            .first()
+        )
+
+        # ไม่เจอ → สร้าง menu
+        if not menu:
+            menu = Menu(
+                food_name=food_name,
+                calories=payload.calories,
+                protein=payload.protein,
+                carb=payload.carb,
+                fat=payload.fat,
+            )
+            db.add(menu)
+            db.flush()  # ได้ menu.id โดยไม่ commit
+
+        # บันทึก meal
+        meal = MealNutrition(
+            user_id=user.id,
+            menu_id=menu.id,
+            name=menu.food_name,
+            calories=payload.calories,
+            protein=payload.protein,
+            carb=payload.carb,
+            fat=payload.fat,
+            meal_time=payload.meal_time,
+            image_url=payload.image_url,
+        )
+
+        db.add(meal)
+        db.commit()
+        db.refresh(meal)
+        return meal
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Create meal failed: {str(e)}",
+        )
 
 
 # ------------------------------------------------------------------------------
-# Get meals by date (แก้แล้ว ใช้ func.date() เพื่อให้เจอวันปัจจุบัน)
+# Get meals by date
 # ------------------------------------------------------------------------------
 @router.get("", response_model=List[MealOut])
 def get_meals(
@@ -45,14 +87,48 @@ def get_meals(
 ):
     user = crud.get_user_by_email(db, current_email)
 
-    query = db.query(MealNutrition).filter(MealNutrition.user_id == user.id)
+    query = (
+        db.query(MealNutrition)
+        .filter(MealNutrition.user_id == user.id)
+    )
 
     if date:
-        # ⭐⭐⭐ แก้จุดสำคัญ — ห้ามใช้ cast() ต้องใช้ func.date()
+        # PostgreSQL-safe
         query = query.filter(func.date(MealNutrition.created_at) == date)
 
-    meals = query.order_by(MealNutrition.created_at.desc()).all()
-    return meals
+    return query.order_by(MealNutrition.created_at.desc()).all()
+
+
+# ------------------------------------------------------------------------------
+# Update Meal (ไม่แก้ menu)
+# ------------------------------------------------------------------------------
+@router.patch("/{meal_id}", response_model=MealOut)
+def update_meal(
+    meal_id: int,
+    payload: MealUpdate,
+    db: Session = Depends(get_db),
+    current_email: str = Depends(get_current_user_email),
+):
+    user = crud.get_user_by_email(db, current_email)
+
+    meal = (
+        db.query(MealNutrition)
+        .filter(
+            MealNutrition.id == meal_id,
+            MealNutrition.user_id == user.id,
+        )
+        .first()
+    )
+
+    if not meal:
+        raise HTTPException(status_code=404, detail="Meal not found")
+
+    for field, value in payload.dict(exclude_unset=True).items():
+        setattr(meal, field, value)
+
+    db.commit()
+    db.refresh(meal)
+    return meal
 
 
 # ------------------------------------------------------------------------------
@@ -68,59 +144,22 @@ def delete_meal(
 
     meal = (
         db.query(MealNutrition)
-        .filter(MealNutrition.id == meal_id, MealNutrition.user_id == user.id)
+        .filter(
+            MealNutrition.id == meal_id,
+            MealNutrition.user_id == user.id,
+        )
         .first()
     )
 
     if not meal:
         raise HTTPException(status_code=404, detail="Meal not found")
 
-    try:
-        db.delete(meal)
-        db.commit()
-    except:
-        db.rollback()
-        raise HTTPException(status_code=500, detail="Error deleting meal")
+    db.delete(meal)
+    db.commit()
 
 
 # ------------------------------------------------------------------------------
-# Update Meal
-# ------------------------------------------------------------------------------
-@router.put("/{meal_id}", response_model=MealOut)
-@router.patch("/{meal_id}", response_model=MealOut)
-def update_meal(
-    meal_id: int,
-    payload: MealUpdate,
-    db: Session = Depends(get_db),
-    current_email: str = Depends(get_current_user_email),
-):
-    user = crud.get_user_by_email(db, current_email)
-
-    meal = (
-        db.query(MealNutrition)
-        .filter(MealNutrition.id == meal_id, MealNutrition.user_id == user.id)
-        .first()
-    )
-
-    if not meal:
-        raise HTTPException(status_code=404, detail="Meal not found")
-
-    update_data = payload.dict(exclude_unset=True)
-    try:
-        for field, value in update_data.items():
-            setattr(meal, field, value)
-
-        db.commit()
-        db.refresh(meal)
-        return meal
-
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Error updating meal: {str(e)}")
-
-
-# ------------------------------------------------------------------------------
-# Get meal dates — ให้ HistoryScreen โหลดวันที่ที่เคยบันทึกอาหาร
+# Get meal dates (History)
 # ------------------------------------------------------------------------------
 @router.get("/dates")
 def get_meal_dates(

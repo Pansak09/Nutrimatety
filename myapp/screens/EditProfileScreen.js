@@ -21,6 +21,15 @@ import { API } from "../api";
 import { uploadAvatar } from "../utils/uploadAvatar";
 
 const GOAL_OPTIONS = ["รักษาหุ่น", "ลดน้ำหนัก", "เพิ่มน้ำหนัก"];
+const LIFESTYLE_OPTIONS = [
+  { key: "sedentary", label: "ไม่ค่อยออกกำลังกาย" },
+  { key: "light", label: "ออกกำลังกายเล็กน้อย" },
+  { key: "moderate", label: "ออกกำลังกายปานกลาง" },
+  { key: "active", label: "ออกกำลังกายหนัก" },
+  { key: "athlete", label: "นักกีฬา / ฝึกหนักมาก" },
+];
+
+
 
 const normalizeGender = (g) => {
   const s = (g || "").toLowerCase();
@@ -55,6 +64,8 @@ export default function EditProfileScreen({ navigation }) {
 
   const [foodAllergies, setFoodAllergies] = useState("");
   const [goal, setGoal] = useState(null);
+  const [lifestyle, setLifestyle] = useState("light");
+
 
   const [avatarUri, setAvatarUri] = useState(null);
 
@@ -79,6 +90,7 @@ export default function EditProfileScreen({ navigation }) {
       setTargetCalories(data.target_calories?.toString() ?? "");
       setFoodAllergies(data.food_allergies || "");
       setGoal(data.goal || null);
+      setLifestyle(data.lifestyle || "light");
       setAvatarUri(data.avatar_url || null);
     } catch (err) {
       Alert.alert("Error", err.response?.data?.detail || err.message);
@@ -109,6 +121,9 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
+
+
+
   /*  บันทึกโปรไฟล์ */
   const onSave = async () => {
     if (!username.trim()) return Alert.alert("กรุณากรอก Username");
@@ -133,6 +148,7 @@ export default function EditProfileScreen({ navigation }) {
         target_weight: targetWeight ? Number(targetWeight) : null,
         target_calories: targetCalories ? Number(targetCalories) : null,
         goal: goal || null,
+        lifestyle: lifestyle,
         food_allergies: foodAllergies || null,
         avatar_url: finalAvatar || null,
       };
@@ -177,7 +193,6 @@ export default function EditProfileScreen({ navigation }) {
           </TouchableOpacity>
           <View style={{ flex: 1, alignItems: "center" }}>
             <Text style={styles.headerTitle}>แก้ไขโปรไฟล์</Text>
-            <Text style={styles.headerSubtitle}>อัปเดตข้อมูลให้ตรงกับคุณในวันนี้ 🌿</Text>
           </View>
           <View style={{ width: 26 }} />
         </View>
@@ -264,6 +279,31 @@ export default function EditProfileScreen({ navigation }) {
               ))}
             </View>
 
+            {/* Lifestyle */}
+            <Text style={styles.label}>ระดับกิจกรรม (Lifestyle)</Text>
+            <View style={styles.goalRow}>
+              {LIFESTYLE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    styles.goalOption,
+                    lifestyle === opt.key && styles.goalOptionActive,
+                  ]}
+                  onPress={() => setLifestyle(opt.key)}
+                >
+                  <Text
+                    style={[
+                      styles.goalText,
+                      lifestyle === opt.key && styles.goalTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+
             {/* Birthday */}
             <Text style={styles.label}>วันเกิด</Text>
             <TouchableOpacity
@@ -325,17 +365,6 @@ export default function EditProfileScreen({ navigation }) {
               value={currentWeight}
               onChangeText={setCurrentWeight}
               placeholder="เช่น 70"
-              placeholderTextColor="#aaa"
-            />
-
-            {/* Target Weight */}
-            <Text style={styles.label}>น้ำหนักเป้าหมาย (kg)</Text>
-            <TextInput
-              style={styles.input}
-              keyboardType="numeric"
-              value={targetWeight}
-              onChangeText={setTargetWeight}
-              placeholder="เช่น 65"
               placeholderTextColor="#aaa"
             />
 

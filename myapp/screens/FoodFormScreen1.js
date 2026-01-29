@@ -111,7 +111,7 @@ export default function FoodFormScreen1({ navigation, route }) {
       setName(f.food_name || foodName);
       setProtein(f.protein?.toString() || "");
       setFat(f.fat?.toString() || "");
-      setCarb(f.carbs?.toString() || "");
+      setCarb(f.carb?.toString() || "");
       setKcal(f.calories?.toString() || "");
     } catch (err) {
       Alert.alert("ผิดพลาด", err.message);

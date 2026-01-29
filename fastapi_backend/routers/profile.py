@@ -1,6 +1,7 @@
 # routers/profile.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
 import crud, schemas, models
 from database import get_db
 from auth import get_current_user_email
@@ -98,3 +99,37 @@ def update_my_profile(
 
     updated_profile = crud.update_profile(db, user.id, profile)
     return updated_profile
+
+# DELETE ACCOUNT (ลบบัญชีตัวเอง)
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    db: Session = Depends(get_db),
+    current_email: str = Depends(get_current_user_email),
+):
+    user = crud.get_user_by_email(db, current_email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        # 1) ลบ meal ทั้งหมดของ user
+        db.query(models.MealNutrition).filter(
+            models.MealNutrition.user_id == user.id
+        ).delete(synchronize_session=False)
+
+        # 2) ลบ profile
+        profile = crud.get_profile_by_user(db, user.id)
+        if profile:
+            db.delete(profile)
+
+        # 3) ลบ user
+        db.delete(user)
+
+        db.commit()
+        return
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Delete account failed: {str(e)}",
+        )

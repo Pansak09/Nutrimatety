@@ -75,7 +75,7 @@ class MenuOut(BaseModel):
     food_name_en: Optional[str] = None
     protein: Optional[float] = None
     fat: Optional[float] = None
-    carbs: Optional[float] = None
+    carb: Optional[float] = None
     calories: Optional[float] = None
     image_url: Optional[str] = None
 
@@ -110,6 +110,7 @@ class MealUpdate(BaseModel):
 class MealOut(BaseModel):
     id: int
     user_id: int
+    menu_id: int         
     name: str
     protein: Optional[float]
     fat: Optional[float]
@@ -121,4 +122,3 @@ class MealOut(BaseModel):
 
     class Config:
         from_attributes = True
-

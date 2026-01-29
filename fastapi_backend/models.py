@@ -75,12 +75,14 @@ class Menu(Base):
     __tablename__ = "menu"
 
     id = Column(Integer, primary_key=True, index=True)
-    food_name = Column(String, nullable=False)
+    food_name = Column(String, nullable=False, unique=True, index=True)
     food_name_en = Column(String, nullable=True)
+
     calories = Column(Float, nullable=True)
     protein = Column(Float, nullable=True)
-    carbs = Column(Float, nullable=True)
+    carb = Column(Float, nullable=True) 
     fat = Column(Float, nullable=True)
+
 
 
 # =========================
@@ -92,14 +94,20 @@ class MealNutrition(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
+    menu_id = Column(
+        Integer,
+        ForeignKey("menu.id", ondelete="RESTRICT"),
+        nullable=False
+    )
+
     name = Column(String, nullable=False)
-    protein = Column(Float, nullable=True)
-    fat = Column(Float, nullable=True)
-    carb = Column(Float, nullable=True)
-    calories = Column(Float, nullable=True)
-    image_url = Column(String, nullable=True)
-    meal_time = Column(String, nullable=True)
+    protein = Column(Float)
+    fat = Column(Float)
+    carb = Column(Float)
+    calories = Column(Float)
+    image_url = Column(String)
+    meal_time = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    user = relationship("User")
+    menu = relationship("Menu")
 

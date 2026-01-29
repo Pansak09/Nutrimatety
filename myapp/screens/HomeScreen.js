@@ -19,7 +19,7 @@ import { API } from "../api";
 import RadialProgressChart from "../components/RadialProgressChart";
 
 // key สำหรับเก็บค่าเป้าหมายในเครื่อง
-const GOAL_KEY = "nutrition_goals_v1";
+const buildGoalKey = (userId) => `nutrition_goals_v1_user_${userId}`;
 
 export default function HomeScreen({ navigation }) {
   /* ---------------- STATES ---------------- */
@@ -29,7 +29,15 @@ export default function HomeScreen({ navigation }) {
     เย็น: [],
   });
 
+  // const [alertMessages, setAlertMessages] = useState([]);
+  // const [encourageMessage, setEncourageMessage] = useState("");
+
+
   const [profile, setProfile] = useState(null);
+
+  const goalKey = profile?.user_id
+    ? buildGoalKey(profile.user_id)
+    : null;
 
   // ค่าเป้าหมายแบบสำรอง (ใช้ตอนยังคำนวณ TDEE ไม่ได้ หรือไม่ตั้งค่าเอง)
   const [goalKcal, setGoalKcal] = useState(2500);
@@ -52,6 +60,12 @@ export default function HomeScreen({ navigation }) {
   const [selectedMeal, setSelectedMeal] = useState("เช้า");
 
   const [todayText, setTodayText] = useState("");
+  
+  const ANALYTICS_LAST_RUN_KEY = "nutrition_analytics_last_run";
+  const [weeklySummary, setWeeklySummary] = useState("");
+  const [encourageMessage, setEncourageMessage] = useState("");
+
+
 
   /* ---------------- ฟังก์ชันวันที่วันนี้ ---------------- */
   const updateTodayText = () => {
@@ -86,14 +100,15 @@ export default function HomeScreen({ navigation }) {
   /* ---------------- โหลด goal ที่เคยตั้งไว้จาก AsyncStorage ---------------- */
   const loadSavedGoals = async () => {
     try {
-      const raw = await AsyncStorage.getItem(GOAL_KEY);
+      if (!goalKey) return;
+
+      const raw = await AsyncStorage.getItem(goalKey);
       if (!raw) return;
 
       const saved = JSON.parse(raw);
 
       if (saved && typeof saved.kcal === "number") {
         setUseCustomGoal(saved.useCustom ?? true);
-
         setGoalKcal(saved.kcal);
         setGoalProtein(saved.protein ?? 0);
         setGoalCarb(saved.carb ?? 0);
@@ -111,10 +126,13 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+
   useEffect(() => {
-    updateTodayText();
-    loadSavedGoals();
-  }, []);
+    if (profile?.user_id) {
+      loadSavedGoals();
+    }
+  }, [profile?.user_id]);
+
 
   /* ---------------- โหลดโปรไฟล์ ---------------- */
   const loadProfile = async () => {
@@ -152,10 +170,35 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const loadWeeklySummary = async () => {
+    const { data } = await API.get("/analytics/weekly-summary");
+    setWeeklySummary(data.message);
+  };
+
+  /* ================= ENCOURAGE ================= */
+  const randomEncourage = () => {
+    const messages = [
+      "คุณกำลังสร้างนิสัยที่ดีให้ร่างกายอยู่ 💚",
+      "ความสม่ำเสมอสำคัญกว่าความสมบูรณ์แบบ ✨",
+      "วันนี้คุณดูแลตัวเองได้ดีมาก 😊",
+      "ทุกมื้อที่ใส่ใจ คือการลงทุนเพื่อสุขภาพ 🌱",
+    ];
+    setEncourageMessage(
+      messages[Math.floor(Math.random() * messages.length)]
+    );
+  };
+
+  /* ================= EFFECT ================= */
+  useEffect(() => {
+    updateTodayText();
+  }, []);
+
   useFocusEffect(
     useCallback(() => {
       loadProfile();
       loadTodayMeals();
+      loadWeeklySummary();
+      randomEncourage();
     }, [])
   );
 
@@ -278,16 +321,17 @@ export default function HomeScreen({ navigation }) {
     setUseCustomGoal(true);
 
     try {
+      if (!goalKey) return;
       await AsyncStorage.setItem(
-        GOAL_KEY,
-        JSON.stringify({
-          useCustom: true,
-          kcal: newKcal,
-          protein: newProtein,
-          carb: newCarb,
-          fat: newFat,
-        })
-      );
+      goalKey,
+      JSON.stringify({
+        useCustom: true,
+        kcal: newKcal,
+        protein: newProtein,
+        carb: newCarb,
+        fat: newFat,
+      })
+    );
     } catch (err) {
       console.log("SAVE GOALS ERROR:", err.message);
     }
@@ -332,6 +376,31 @@ export default function HomeScreen({ navigation }) {
             </TouchableOpacity>
           </View>
         </View>
+        
+        {/*Weekly Summary */}
+        {weeklySummary && (
+          <View style={[styles.alertBox, { borderLeftColor: "#4CAF50" }]}>
+            <Text style={styles.alertTitle}>สรุปพฤติกรรมการกิน</Text>
+            <Text style={styles.alertText}>{weeklySummary}</Text>
+          </View>
+        )}
+
+        {/*Encouragement */}
+        {encourageMessage && (
+          <View
+            style={[
+              styles.alertBox,
+              { backgroundColor: "#E8F5E9", borderLeftColor: "#4CAF50" },
+            ]}
+          >
+            {/*<Text style={[styles.alertTitle, { color: "#2E7D32" }]}>
+              กำลังใจวันนี้
+            </Text>*/}
+            <Text style={[styles.alertText, { color: "#2E7D32" }]}>
+              {encourageMessage}
+            </Text>
+          </View>
+        )}
 
         {/* =====================================================
             Section: สรุปโภชนาการวันนี้
@@ -358,6 +427,7 @@ export default function HomeScreen({ navigation }) {
             goal={fatTarget || 0}
           />
         </View>
+
 
         {/* =====================================================
             Section: บันทึกรายการอาหาร
@@ -569,7 +639,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     elevation: 4,
   },
-
+  
   energyInfo: { marginLeft: 20 },
   todayText: { fontSize: 15, color: "#444" },
 
@@ -753,4 +823,30 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+
+  alertBox: {
+  backgroundColor: "#FFF8E1",
+  marginHorizontal: 14,
+  marginTop: 14,
+  padding: 14,
+  borderRadius: 16,
+  borderLeftWidth: 5,
+  borderLeftColor: "#F5C542",
+  elevation: 2,
+  },
+
+  alertTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 6,
+    color: "#7A5C00",
+  },
+
+  alertText: {
+    fontSize: 14,
+    color: "#555",
+    marginTop: 4,
+  },
+
 });
+

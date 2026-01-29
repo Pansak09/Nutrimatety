@@ -128,7 +128,7 @@ export default function CameraScreen() {
               name: m.food_name,
               protein: String(m.protein || ""),
               fat: String(m.fat || ""),
-              carb: String(m.carbs || ""),
+              carb: String(m.carb || ""),
               kcal: String(m.calories || ""),
             };
           }

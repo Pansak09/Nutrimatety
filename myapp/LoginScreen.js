@@ -48,7 +48,7 @@ export default function LoginScreen({ navigation }) {
           source={require('./assets/imageapp.png')} // เปลี่ยนตามต้องการ
           style={styles.logo}
         />
-        <Text style={styles.heading}>ยินดีต้อนรับกลับมา!</Text>
+        <Text style={styles.heading}>ยินดีต้อนรับ</Text>
         <Text style={styles.subheading}>เข้าสู่ระบบเพื่อเริ่มต้นวันดี ๆ ของคุณ </Text>
       </View>
 
@@ -106,7 +106,7 @@ export default function LoginScreen({ navigation }) {
 }
 
 // ===============================
-// 💅 BEAUTIFUL MODERN STYLES
+// BEAUTIFUL MODERN STYLES
 // ===============================
 const styles = StyleSheet.create({
   container: {

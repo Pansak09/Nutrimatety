@@ -14,6 +14,7 @@ from routers.files import router as files_router
 from routers.yolo import router as yolo_router
 from routers import menu
 from routers import meals
+from routers import analytics 
 
 # ----------- สร้างตาราง -----------
 Base.metadata.create_all(bind=engine)
@@ -49,6 +50,7 @@ app.include_router(files_router)
 app.include_router(yolo_router)
 app.include_router(menu.router)
 app.include_router(meals.router)
+app.include_router(analytics.router) 
 
 # ----------- Health Check -----------
 @app.get("/healthz", tags=["health"])

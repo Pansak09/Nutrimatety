@@ -9,6 +9,13 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 
 const OPTIONS = ['รักษาหุ่น', 'ลดน้ำหนัก', 'เพิ่มน้ำหนัก'];
+const LIFESTYLE_OPTIONS = [
+  { key: "sedentary", label: "ไม่ค่อยออกกำลังกาย" },
+  { key: "light", label: "ออกกำลังกายเล็กน้อย" },
+  { key: "moderate", label: "ออกกำลังกายปานกลาง" },
+  { key: "active", label: "ออกกำลังกายหนัก" },
+  { key: "athlete", label: "นักกีฬา / ออกกำลังกายหนักมาก" },
+];
 
 const toYMD = (d) => new Date(d).toISOString().slice(0, 10);
 
@@ -27,6 +34,8 @@ export default function CreateProfileScreen({ navigation }) {
 
   const [avatarUri, setAvatarUri] = useState(null);
 
+  const [lifestyle, setLifestyle] = useState("light");
+
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
       allowsEditing: true,
@@ -40,6 +49,7 @@ export default function CreateProfileScreen({ navigation }) {
     if (!username.trim()) return Alert.alert("กรุณากรอก Username");
     if (!gender) return Alert.alert("กรุณาเลือกเพศ");
     if (!goalChoice) return Alert.alert("กรุณาเลือกเป้าหมายสุขภาพ");
+    if (!lifestyle) return Alert.alert("กรุณาเลือกระดับกิจกรรม");
     if (!height || !currentWeight) {
       return Alert.alert("กรุณากรอกข้อมูลให้ครบ");
     }
@@ -51,7 +61,7 @@ export default function CreateProfileScreen({ navigation }) {
       weight: currentWeight,
       dob: toYMD(dob),
       goal: goalChoice,
-      lifestyle: "light",
+      lifestyle: lifestyle,
       food: foodAllergies,
       imageUri: avatarUri
     });
@@ -204,6 +214,26 @@ export default function CreateProfileScreen({ navigation }) {
               </TouchableOpacity>
             ))}
 
+            {/* Lifestyle */}
+            <Text style={styles.label}>ระดับกิจกรรม (Lifestyle)</Text>
+            {LIFESTYLE_OPTIONS.map((opt) => (
+              <TouchableOpacity
+                key={opt.key}
+                style={[
+                  styles.option,
+                  lifestyle === opt.key && styles.optionSelected,
+                ]}
+                onPress={() => setLifestyle(opt.key)}
+              >
+                <View
+                  style={[
+                    styles.radio,
+                    lifestyle === opt.key && styles.radioSelected,
+                  ]}
+                />
+                <Text style={styles.optionLabel}>{opt.label}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
         </ScrollView>
 

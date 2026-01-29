@@ -71,7 +71,7 @@ export default function FoodFormScreen({ navigation, route }) {
 
       setProtein(item.protein?.toString() || "");
       setFat(item.fat?.toString() || "");
-      setCarb(item.carbs?.toString() || "");
+      setCarb(item.carb?.toString() || "");
       setKcal(item.calories?.toString() || "");
     } catch (err) {
       Alert.alert("เกิดข้อผิดพลาด", err.message);

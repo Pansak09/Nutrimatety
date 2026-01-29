@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, Image, TouchableOpacity, StyleSheet,
-  ScrollView, ActivityIndicator, useWindowDimensions
+  ScrollView, ActivityIndicator, useWindowDimensions,
+  Alert
 } from "react-native";
 
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
@@ -81,6 +82,35 @@ export default function ProfileScreen() {
     navigation.reset({ index: 0, routes: [{ name: "Auth" }] });
   };
 
+  /* ---------------- Delete Account ---------------- */
+  const deleteAccount = () => {
+    Alert.alert(
+      "ยืนยันลบบัญชี",
+      "การลบบัญชีจะลบข้อมูลผู้ใช้และโปรไฟล์ของคุณถาวร คุณแน่ใจหรือไม่?",
+      [
+        { text: "ยกเลิก", style: "cancel" },
+        {
+          text: "ลบบัญชี",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // เรียก API ลบบัญชี
+              await API.delete("/profiles/me");
+            
+              // ล้าง token แล้วกลับหน้า Auth
+              await AsyncStorage.removeItem("access_token");
+              navigation.reset({ index: 0, routes: [{ name: "Auth" }] });
+            } catch (e) {
+              const detail = e.response?.data?.detail;
+              Alert.alert("ลบบัญชีไม่สำเร็จ", detail || e.message || "เกิดข้อผิดพลาด");
+            }
+          },
+        },
+      ]
+    );
+  };
+
+
   /* ---------------- Helper Functions ---------------- */
   const buildURL = (u) =>
     !u ? null : u.startsWith("/uploads") ? `${API.defaults.baseURL}${u}` : u;
@@ -93,6 +123,14 @@ export default function ProfileScreen() {
     } catch {
       return iso;
     }
+  };
+
+  const LIFESTYLE_LABEL = {
+    sedentary: "ไม่ค่อยออกกำลังกาย",
+    light: "ออกกำลังกายเล็กน้อย",
+    moderate: "ออกกำลังกายปานกลาง",
+    active: "ออกกำลังกายหนัก",
+    athlete: "นักกีฬา / ออกกำลังกายหนักมาก",
   };
 
   const calcAge = (dob) => {
@@ -206,9 +244,10 @@ export default function ProfileScreen() {
                 🎯 เป้าหมาย: {profile?.goal || "-"}
               </Text>
 
-              <Text style={styles.goalChip}>
-                🏋 Lifestyle: {profile?.lifestyle || "light"}
+              <Text style={[styles.goalChip, { backgroundColor: "#E3F2FD", color: "#1565C0" }]}>
+                🏋ระดับกิจกรรม: {LIFESTYLE_LABEL[profile?.lifestyle]}
               </Text>
+
             </View>
 
             <TouchableOpacity
@@ -223,7 +262,6 @@ export default function ProfileScreen() {
         {/* ================= General Info ================= */}
         <View style={styles.infoCard}>
           <InfoRow label="น้ำหนักปัจจุบัน" value={`${profile?.current_weight ?? "-"} kg`} />
-          <InfoRow label="น้ำหนักเป้าหมาย" value={`${profile?.target_weight ?? "-"} kg`} />
           <InfoRow label="ส่วนสูง" value={`${profile?.height ?? "-"} cm`} />
           <InfoRow label="เพศ" value={profile?.gender || "-"} />
           <InfoRow label="วันเกิด" value={formatDate(profile?.date_of_birth)} />
@@ -251,6 +289,10 @@ export default function ProfileScreen() {
         {/* ================= Logout ================= */}
         <TouchableOpacity style={styles.logoutBtnBottom} onPress={logout}>
           <Text style={styles.logoutBottomText}>ออกจากระบบ</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.deleteBtnBottom} onPress={deleteAccount}>
+          <Text style={styles.deleteBottomText}>ลบบัญชี</Text>
         </TouchableOpacity>
 
       </ScrollView>
@@ -398,15 +440,34 @@ const styles = StyleSheet.create({
   rowValue: { fontWeight: "700", color: "#1A4D3E" },
 
   logoutBtnBottom: {
-    backgroundColor: "#FF6464",
+    backgroundColor: "#FFFFFF",
     paddingVertical: 16,
     borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#1B7F5A",
     marginTop: 22
   },
 
   logoutBottomText: {
-    color: "#fff", fontWeight: "800",
+    color: "#1B7F5A", fontWeight: "800",
     textAlign: "center",
     fontSize: 17
   },
+
+  deleteBtnBottom: {
+    backgroundColor: "#B00020",    
+    paddingVertical: 16,
+    borderRadius: 14,
+    marginTop: 12,
+    marginBottom: 10,
+  },
+
+  deleteBottomText: {
+    color: "#fff",
+    fontWeight: "800",
+    textAlign: "center",
+    fontSize: 17,
+  },
+
 });
+
