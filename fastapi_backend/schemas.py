@@ -122,3 +122,35 @@ class MealOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class MenuAdminOut(BaseModel):
+    id: int
+    food_name: str
+    food_name_en: Optional[str] = None
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carb: Optional[float] = None
+    fat: Optional[float] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+class MenuCreate(BaseModel):
+    food_name: str
+    food_name_en: Optional[str] = None
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carb: Optional[float] = None
+    fat: Optional[float] = None
+
+class MenuUpdate(BaseModel):
+    food_name: Optional[str] = None
+    food_name_en: Optional[str] = None
+    calories: Optional[float] = None
+    protein: Optional[float] = None
+    carb: Optional[float] = None
+    fat: Optional[float] = None
+    
+class RegisterWithProfile(BaseModel):
+    email: EmailStr
+    password: str
+    profile: ProfileCreate

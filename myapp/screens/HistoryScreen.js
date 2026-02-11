@@ -8,74 +8,96 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { API } from "../api";
+
+const API_BASE = "http://172.20.10.5:8000"; 
 
 export default function HistoryScreen({ navigation }) {
   const [days, setDays] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    generateHistoryDates();
+    fetchMealDates();
   }, []);
 
-  // ⭐ สร้างวันที่ย้อนหลังแบบ Local (ไม่ใช้ toISOString)
-  const formatDateLocal = (d) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
+  // ===============================
+  // ดึงวันที่ที่มี meal จริงจาก backend
+  // ===============================
+  const fetchMealDates = async () => {
+    try {
+      setLoading(true); // เริ่มโหลด
+      const { data } = await API.get("/meals/dates");
+      generateFromBackendDates(data);
+    } catch (err) {
+      console.log(
+        "โหลดวันที่ไม่สำเร็จ:",
+        err?.response?.data || err.message
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // ⭐ สร้างรายชื่อวันที่ย้อนหลัง 14 วัน
-  const generateHistoryDates = () => {
-    const list = [];
-    const today = new Date();
+  // ===============================
+  // แปลงวันที่จาก backend → ใช้แสดงผล
+  // ===============================
+  const generateFromBackendDates = (dateList) => {
+    const list = dateList.map((iso, index) => {
+      const d = new Date(iso);
 
-    for (let i = 0; i < 14; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-
-      const iso = formatDateLocal(d);  // ← ใช้ฟังก์ชันใหม่ ไม่เลื่อนวัน
-
-      const thaiDate = d.toLocaleDateString("th-TH", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-
-      list.push({
-        id: i + 1,
-        dateLabel: thaiDate,
+      return {
+        id: index + 1,
         dateISO: iso,
-      });
-    }
+        dateLabel: d.toLocaleDateString("th-TH", {
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+        }),
+      };
+    });
 
     setDays(list);
   };
 
+  // ===============================
+  // UI
+  // ===============================
   return (
     <View style={styles.container}>
       <Text style={styles.header}>ประวัติย้อนหลัง</Text>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {days.map((item) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.card}
-            onPress={() =>
-              navigation.navigate("HistoryDetail", { date: item.dateISO })
-            }
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.date}>{item.dateLabel}</Text>
-              <Text style={styles.kcal}>กดเพื่อดูรายละเอียด</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#555" />
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {loading ? (
+        <Text style={styles.loading}>กำลังโหลดข้อมูล...</Text>
+      ) : days.length === 0 ? (
+        <Text style={styles.empty}>ยังไม่มีข้อมูลอาหาร</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll}>
+          {days.map((item) => (
+            <TouchableOpacity
+              key={item.id}
+              style={styles.card}
+              onPress={() =>
+                navigation.navigate("HistoryDetail", {
+                  date: item.dateISO,
+                })
+              }
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={styles.date}>{item.dateLabel}</Text>
+                <Text style={styles.kcal}>กดเพื่อดูรายละเอียด</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color="#555" />
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
+// ===============================
+// Styles
+// ===============================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -89,6 +111,19 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     marginBottom: 14,
     color: "#2c3e50",
+  },
+
+  loading: {
+    marginTop: 40,
+    textAlign: "center",
+    color: "#555",
+  },
+
+  empty: {
+    marginTop: 40,
+    textAlign: "center",
+    color: "#999",
+    fontStyle: "italic",
   },
 
   scroll: {

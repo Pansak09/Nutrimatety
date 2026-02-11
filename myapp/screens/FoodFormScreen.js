@@ -1,10 +1,12 @@
 // FoodFormScreen.js
+import * as ImageManipulator from "expo-image-manipulator";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
   Alert, KeyboardAvoidingView, ScrollView
 } from "react-native";
 import { API, API_BASE } from "../api";
+
 
 // ✨ เพิ่มรายการ Mapping ชื่ออาหาร → ชื่อไทย
 const nameMap = {
@@ -17,6 +19,7 @@ const nameMap = {
   "Roast Chicken": "ข้าวมันไก่",
   "Omelet Rice": "ข้าวไข่เจียว",
 };
+
 
 export default function FoodFormScreen({ navigation, route }) {
   const { imageUrl, preset = {} } = route.params || {};
@@ -80,24 +83,36 @@ export default function FoodFormScreen({ navigation, route }) {
 
   // ---------------------- UPLOAD IMAGE ----------------------
   const uploadImage = async (localUri) => {
-    if (!localUri || !localUri.startsWith("file")) return null;
-
+    if (!localUri || !localUri.startsWith("file://")) return null;
+    
+    // ✅ convert ทุกครั้ง
+    const converted = await ImageManipulator.manipulateAsync(
+      localUri,
+      [],
+      {
+        compress: 0.9,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+  
     const formData = new FormData();
     formData.append("file", {
-      uri: localUri,
+      uri: converted.uri,
       name: "photo.jpg",
       type: "image/jpeg",
     });
-
+  
     const res = await fetch(`${API_BASE}/files/upload`, {
       method: "POST",
-      headers: { "Content-Type": "multipart/form-data" },
       body: formData,
     });
-
+  
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+  
     const data = await res.json();
-    if (!data.url) throw new Error("Upload image failed");
-
     return data.url;
   };
 

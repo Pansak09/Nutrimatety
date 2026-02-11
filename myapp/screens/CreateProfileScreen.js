@@ -7,6 +7,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API } from '../api';
 
 const OPTIONS = ['รักษาหุ่น', 'ลดน้ำหนัก', 'เพิ่มน้ำหนัก'];
 const LIFESTYLE_OPTIONS = [
@@ -19,7 +21,9 @@ const LIFESTYLE_OPTIONS = [
 
 const toYMD = (d) => new Date(d).toISOString().slice(0, 10);
 
-export default function CreateProfileScreen({ navigation }) {
+export default function CreateProfileScreen({ navigation, route }) {
+  // รับ email / password จาก RegisterScreen
+  const { email, password } = route.params;
 
   const [username, setUsername] = useState('');
   const [gender, setGender] = useState(null);
@@ -35,6 +39,7 @@ export default function CreateProfileScreen({ navigation }) {
   const [avatarUri, setAvatarUri] = useState(null);
 
   const [lifestyle, setLifestyle] = useState("light");
+  const [loading, setLoading] = useState(false);
 
   const pickImage = async () => {
     const res = await ImagePicker.launchImageLibraryAsync({
@@ -45,26 +50,52 @@ export default function CreateProfileScreen({ navigation }) {
     if (!res.canceled) setAvatarUri(res.assets[0].uri);
   };
 
-  const onNext = () => {
+  const onSubmit = async () => {
     if (!username.trim()) return Alert.alert("กรุณากรอก Username");
     if (!gender) return Alert.alert("กรุณาเลือกเพศ");
     if (!goalChoice) return Alert.alert("กรุณาเลือกเป้าหมายสุขภาพ");
     if (!lifestyle) return Alert.alert("กรุณาเลือกระดับกิจกรรม");
-    if (!height || !currentWeight) {
+    if (!height || !currentWeight)
       return Alert.alert("กรุณากรอกข้อมูลให้ครบ");
-    }
 
-    navigation.navigate("Summary", {
-      name: username.trim(),
-      gender,
-      height,
-      weight: currentWeight,
-      dob: toYMD(dob),
-      goal: goalChoice,
-      lifestyle: lifestyle,
-      food: foodAllergies,
-      imageUri: avatarUri
-    });
+    setLoading(true);
+    try {
+      const payload = {
+        email,
+        password,
+        profile: {
+          username: username.trim(),
+          gender,
+          height: Number(height),
+          current_weight: Number(currentWeight),
+          date_of_birth: toYMD(dob),
+          goal: goalChoice,
+          lifestyle,
+          food_allergies: foodAllergies,
+          avatar_url: avatarUri,
+        },
+      };
+
+      const { data } = await API.post(
+        "/users/register-with-profile",
+        payload
+      );
+
+      // ได้ token หลังสมัครสำเร็จจริง
+      await AsyncStorage.setItem("access_token", data.access_token);
+
+      // เข้า Home ทันที
+      navigation.reset({
+        index: 0,
+        routes: [{ name: "Main" }],
+      });
+
+    } catch (err) {
+      const msg = err.response?.data?.detail || err.message;
+      Alert.alert("สมัครไม่สำเร็จ", msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -239,8 +270,10 @@ export default function CreateProfileScreen({ navigation }) {
 
         {/* Button */}
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.button} onPress={onNext}>
-            <Text style={styles.buttonText}>ถัดไป</Text>
+          <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading}>
+            <Text style={styles.buttonText}>
+              {loading ? "กำลังสมัคร..." : "สมัครให้เสร็จ"}
+            </Text>
           </TouchableOpacity>
         </View>
 

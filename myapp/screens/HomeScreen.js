@@ -58,6 +58,14 @@ export default function HomeScreen({ navigation }) {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState("เช้า");
+  const isoToday = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  const [todayISO, setTodayISO] = useState(isoToday());
 
   const [todayText, setTodayText] = useState("");
   
@@ -87,14 +95,6 @@ export default function HomeScreen({ navigation }) {
     setTodayText(
       `วันนี้ · ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`
     );
-  };
-
-  const isoToday = () => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}-${String(d.getDate()).padStart(2, "0")}`;
   };
 
   /* ---------------- โหลด goal ที่เคยตั้งไว้จาก AsyncStorage ---------------- */
@@ -147,7 +147,15 @@ export default function HomeScreen({ navigation }) {
   /* ---------------- โหลดอาหารวันนี้ ---------------- */
   const loadTodayMeals = async () => {
     try {
-      const { data } = await API.get("/meals", { params: { date: isoToday() } });
+      setEntriesByMeal({
+        เช้า: [],
+        กลางวัน: [],
+        เย็น: [],
+      });
+
+      const { data } = await API.get("/meals", {
+        params: { date: isoToday() },
+      });
 
       const grouped = { เช้า: [], กลางวัน: [], เย็น: [] };
 
@@ -191,19 +199,32 @@ export default function HomeScreen({ navigation }) {
   /* ================= EFFECT ================= */
   useEffect(() => {
     updateTodayText();
-  }, []);
+  }, [todayISO]);
 
   useFocusEffect(
     useCallback(() => {
+      const now = isoToday();
+
+      if (now !== todayISO) {
+        setTodayISO(now);
+        setEntriesByMeal({
+          เช้า: [],
+          กลางวัน: [],
+          เย็น: [],
+        });
+      }
+
       loadProfile();
       loadTodayMeals();
       loadWeeklySummary();
       randomEncourage();
-    }, [])
+    }, [todayISO])
   );
 
   /* ---------------- รวมโภชนาการ ---------------- */
-  const allMeals = Object.values(entriesByMeal).flat();
+  const allMeals = React.useMemo(() => {
+    return Object.values(entriesByMeal).flat();
+  }, [entriesByMeal]);
   const totalProtein = allMeals.reduce((s, x) => s + x.protein, 0);
   const totalCarb = allMeals.reduce((s, x) => s + x.carb, 0);
   const totalFat = allMeals.reduce((s, x) => s + x.fat, 0);
@@ -352,6 +373,7 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.energyCard}>
           <RadialProgressChart
+            key={todayISO} 
             size={160}
             value={totalKcal}
             goal={kcalGoal}

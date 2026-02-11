@@ -10,6 +10,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import axios from 'axios';
 import { API_BASE, detect } from '../api';
+import * as ImageManipulator from "expo-image-manipulator";
+
+async function normalizeToJpeg(uri) {
+  const result = await ImageManipulator.manipulateAsync(
+    uri,
+    [],
+    {
+      compress: 0.9,
+      format: ImageManipulator.SaveFormat.JPEG,
+    }
+  );
+  return result.uri;
+}
 
 // "Omelet Rice 0.83" = "Omelet Rice"
 function cleanFoodName(name) {
@@ -53,18 +66,20 @@ export default function CameraScreen() {
   // ถ่ายภาพ
   const onSnap = async () => {
     if (!cameraRef.current) return;
+
     try {
       setShooting(true);
+
       const photo = await cameraRef.current.takePictureAsync({
         quality: 0.85,
-        skipProcessing: true,
       });
-      setShooting(false);
 
+      setShooting(false);
       if (!photo?.uri) return;
 
-      setThumb(photo.uri);
-      await uploadAndGo(photo.uri);
+      const jpegUri = await normalizeToJpeg(photo.uri);
+      setThumb(jpegUri);
+      await uploadAndGo(jpegUri);
 
     } catch (e) {
       setShooting(false);
@@ -80,8 +95,9 @@ export default function CameraScreen() {
     const res = await ImagePicker.launchImageLibraryAsync({ quality: 0.9 });
 
     if (!res.canceled && res.assets?.length) {
-      setThumb(res.assets[0].uri);
-      await uploadAndGo(res.assets[0].uri);
+      const jpegUri = await normalizeToJpeg(res.assets[0].uri); 
+      setThumb(jpegUri);
+      await uploadAndGo(jpegUri); 
     }
   };
 

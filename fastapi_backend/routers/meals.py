@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional
-from datetime import date
+from datetime import datetime, date, time
 
 from database import get_db
 from models import MealNutrition, Menu
 from schemas import MealCreate, MealOut, MealUpdate
 from auth import get_current_user_email
+from auth import require_signup_completed
 import crud
 
 router = APIRouter(prefix="/meals", tags=["meals"])
@@ -82,21 +83,23 @@ def create_meal(
 @router.get("", response_model=List[MealOut])
 def get_meals(
     date: Optional[date] = Query(None),
+    user = Depends(require_signup_completed),
     db: Session = Depends(get_db),
-    current_email: str = Depends(get_current_user_email),
 ):
-    user = crud.get_user_by_email(db, current_email)
-
-    query = (
-        db.query(MealNutrition)
-        .filter(MealNutrition.user_id == user.id)
+    q = db.query(MealNutrition).filter(
+        MealNutrition.user_id == user.id
     )
 
     if date:
-        # PostgreSQL-safe
-        query = query.filter(func.date(MealNutrition.created_at) == date)
+        start_dt = datetime.combine(date, time.min)
+        end_dt = datetime.combine(date, time.max)
 
-    return query.order_by(MealNutrition.created_at.desc()).all()
+        q = q.filter(
+            MealNutrition.created_at >= start_dt,
+            MealNutrition.created_at <= end_dt,
+        )
+
+    return q.order_by(MealNutrition.created_at.asc()).all()
 
 
 # ------------------------------------------------------------------------------

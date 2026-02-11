@@ -42,25 +42,28 @@ export default function FoodDetail({ route, navigation }) {
     try {
       await API.delete(`/meals/${item.id}`);
 
-      Alert.alert("สำเร็จ", "ลบข้อมูลเรียบร้อยแล้ว");
-
-      // ดึงวันที่สำหรับ HistoryDetail
-      let dateParam = item.date;
-
-      if (!dateParam && item.created_at) {
-        const d = new Date(item.created_at);
-        dateParam = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      }
-
-      navigation.navigate("HistoryDetail", {
-        date: dateParam,
-        refresh: Date.now(),
-      });
+      Alert.alert(
+        "สำเร็จ",
+        "ลบข้อมูลเรียบร้อยแล้ว",
+        [
+          {
+            text: "ตกลง",
+            onPress: () => {
+              navigation.goBack();
+            },
+          },
+        ],
+        { cancelable: false }
+      );
 
     } catch (err) {
-      Alert.alert("ผิดพลาด", err.response?.data?.detail || err.message);
+      Alert.alert(
+        "ผิดพลาด",
+        err.response?.data?.detail || err.message
+      );
     }
   };
+
 
   return (
     <SafeAreaView style={styles.safe}>

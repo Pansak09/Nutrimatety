@@ -18,12 +18,16 @@ export default function DonutChart({
   const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // รีเซ็ต animation ทุกครั้ง
+    animatedValue.stopAnimation();
+    animatedValue.setValue(0);
+    
     Animated.timing(animatedValue, {
       toValue: percentage * circumference,
       duration: 900,
       useNativeDriver: false,
     }).start();
-  }, [percentage]);
+  }, [percentage, goal]);
 
   const size = radius * 2 + strokeWidth * 2;
 

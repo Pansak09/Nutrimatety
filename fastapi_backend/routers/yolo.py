@@ -6,6 +6,8 @@ from pathlib import Path
 import uuid
 import shutil
 
+from PIL import Image, UnidentifiedImageError
+
 router = APIRouter(prefix="/yolo", tags=["yolo"])
 
 UPLOAD_DIR = Path("uploads")
@@ -13,36 +15,59 @@ RESULTS_DIR = Path("results") / "runs"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# โหลดโมเดล YOLOv8
 model = YOLO("models/best.pt")
+
+
+def normalize_image(src: Path) -> Path:
+    """
+    เปิดรูปด้วย PIL แล้วบันทึกใหม่เป็น RGB JPEG
+    เพื่อให้ YOLO / OpenCV อ่านได้ 100%
+    """
+    try:
+        with Image.open(src) as im:
+            im = im.convert("RGB")
+            fixed = src.with_suffix(".jpg")
+            im.save(fixed, format="JPEG", quality=95)
+        return fixed
+    except UnidentifiedImageError:
+        raise HTTPException(status_code=400, detail="Invalid image file")
 
 
 @router.post("/predict")
 async def predict(file: UploadFile = File(...)):
 
-    # ตรวจองค์ประกอบไฟล์
     if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="only image allowed")
+        raise HTTPException(status_code=400, detail="Only image allowed")
 
-    ext = (Path(file.filename).suffix or ".jpg").lower()
-    if ext not in [".jpg", ".jpeg", ".png", ".bmp", ".webp"]:
-        ext = ".jpg"
+    fname = f"{uuid.uuid4().hex}.jpg"
+    raw_path = UPLOAD_DIR / fname
 
-    fname = f"{uuid.uuid4().hex}{ext}"
-    fpath = UPLOAD_DIR / fname
-
-    with fpath.open("wb") as f:
+    # save raw upload
+    with raw_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # รัน YOLO
-    results = model.predict(
-        source=str(fpath),
-        save=True,
-        conf=0.25,
-        project=str(RESULTS_DIR.parent),
-        name=RESULTS_DIR.name,
-        exist_ok=True
-    )
+    # 🔥 FIX: normalize image ก่อนส่งเข้า YOLO
+    try:
+        image_path = normalize_image(raw_path)
+    except HTTPException:
+        raw_path.unlink(missing_ok=True)
+        raise
+
+    # run YOLO
+    try:
+        results = model.predict(
+            source=str(image_path),
+            conf=0.25,
+            save=True,
+            project="results",
+            name="runs",
+            exist_ok=True
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"YOLO failed: {str(e)}")
+
+    if not results:
+        return {"success": False, "detections": []}
 
     r = results[0]
 
@@ -52,27 +77,24 @@ async def predict(file: UploadFile = File(...)):
         conf = float(b.conf[0])
         x1, y1, x2, y2 = map(float, b.xyxy[0])
 
-        class_name = model.names[cls_id]
+        label = model.names[cls_id] if cls_id in model.names else f"class_{cls_id}"
 
         boxes.append({
             "cls": cls_id,
+            "label": label,
             "conf": conf,
             "box": [x1, y1, x2, y2],
-            "label": class_name
         })
 
-    saved_image = Path(r.save_dir) / fpath.name
+    saved_image = Path(r.save_dir) / image_path.name
     rel_path = saved_image.relative_to("results")
-
-    # ชื่ออาหารตัวแรกของภาพ
-    food_name = boxes[0]["label"] if boxes else ""
 
     return JSONResponse({
         "success": True,
-        "name": food_name,
+        "name": boxes[0]["label"] if boxes else "",
         "detections": boxes,
         "image_url": f"/results/{rel_path.as_posix()}",
-        "uploaded_url": f"/uploads/{fname}",
+        "uploaded_url": f"/uploads/{image_path.name}",
         "original_width": r.orig_shape[1],
-        "original_height": r.orig_shape[0]
+        "original_height": r.orig_shape[0],
     })

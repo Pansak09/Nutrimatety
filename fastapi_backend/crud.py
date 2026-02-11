@@ -192,3 +192,11 @@ def update_profile(db: Session, user_id: int, data: schemas.ProfileUpdate):
     db.commit()
     db.refresh(prof)
     return prof
+
+def has_profile(db: Session, user_id: int) -> bool:
+    return (
+        db.query(models.Profile)
+        .filter(models.Profile.user_id == user_id)
+        .first()
+        is not None
+    )

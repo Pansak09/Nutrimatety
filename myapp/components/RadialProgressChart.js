@@ -28,17 +28,22 @@ export default function RadialProgressChart({
 
   /* Animation */
   useEffect(() => {
+    // รีเซ็ตค่า animation ทุกครั้ง
+    animatedValue.stopAnimation();
+    animatedValue.setValue(0);
+    setDisplayValue(0);
+    
     Animated.timing(animatedValue, {
       toValue: progress * circumference,
       duration: 700,
       useNativeDriver: false,
     }).start();
-
+  
     const id = animatedValue.addListener(({ value }) => {
       const current = goal > 0 ? (value / circumference) * goal : 0;
       setDisplayValue(current);
     });
-
+  
     return () => animatedValue.removeListener(id);
   }, [progress, goal]);
 

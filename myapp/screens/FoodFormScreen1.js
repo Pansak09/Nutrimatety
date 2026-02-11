@@ -7,6 +7,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { API, API_BASE } from "../api";
+import * as ImageManipulator from "expo-image-manipulator";
 
 export default function FoodFormScreen1({ navigation, route }) {
   const { imageUrl, meal } = route.params || {};
@@ -63,36 +64,45 @@ export default function FoodFormScreen1({ navigation, route }) {
   // ---------------- Upload image to backend ----------------
   const uploadImage = async () => {
     if (!localImage || !localImage.startsWith("file://")) {
-      return imageUrl; // ถ้าไม่ได้เลือกรูปใหม่ → return รูปเดิม
+      return imageUrl;
     }
-
-    console.log(">>> UPLOADING:", localImage);
-
+  
+    console.log(">>> ORIGINAL IMAGE:", localImage);
+  
+    // ✅ แปลง HEIC / PNG → JPEG จริง
+    const converted = await ImageManipulator.manipulateAsync(
+      localImage,
+      [],
+      {
+        compress: 0.9,
+        format: ImageManipulator.SaveFormat.JPEG,
+      }
+    );
+  
+    console.log(">>> CONVERTED IMAGE:", converted.uri);
+  
     const formData = new FormData();
     formData.append("file", {
-      uri: localImage,
+      uri: converted.uri,
       name: "photo.jpg",
       type: "image/jpeg",
     });
-
+  
     const res = await fetch(`${API_BASE}/files/upload`, {
       method: "POST",
       body: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
     });
-
+  
     if (!res.ok) {
       const err = await res.text();
       console.log("UPLOAD ERROR:", err);
       throw new Error("Upload failed");
     }
-
+  
     const data = await res.json();
     console.log(">>> UPLOAD SUCCESS:", data);
-
-    return data.url; // เช่น /uploads/xxx.jpg
+  
+    return data.url; // /uploads/xxx.jpg
   };
 
   // ---------------- Fetch nutrition ----------------

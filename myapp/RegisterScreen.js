@@ -10,8 +10,6 @@ import {
   Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API } from './api';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -19,40 +17,23 @@ export default function RegisterScreen({ navigation }) {
   const [confirm, setConfirm] = useState('');
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [loading, setLoading] = useState(false);
 
-  const handleRegister = async () => {
-    if (!email || !password) return Alert.alert('Error', 'กรอกอีเมลและรหัสผ่าน');
-    if (password !== confirm) return Alert.alert('Error', 'รหัสผ่านกับยืนยันไม่ตรง');
-
-    setLoading(true);
-    try {
-      const { data } = await API.post('/users/register', { email, password });
-
-      const token = data?.access_token;
-      if (!token) throw new Error('ไม่พบ token จากเซิร์ฟเวอร์');
-
-      await AsyncStorage.setItem('access_token', token);
-
-      navigation.replace('CreateProfile');
-    } catch (err) {
-      const msg = err.response?.data?.detail || err.message;
-
-      if (msg.includes('already registered')) {
-        Alert.alert(
-          'บัญชีนี้มีอยู่แล้ว',
-          'อีเมลนี้ถูกใช้สมัครแล้ว ต้องการเข้าสู่ระบบหรือไม่?',
-          [
-            { text: 'ยกเลิก', style: 'cancel' },
-            { text: 'เข้าสู่ระบบ', onPress: () => navigation.replace('Login') }
-          ]
-        );
-      } else {
-        Alert.alert('Error', msg);
-      }
-    } finally {
-      setLoading(false);
+  const handleRegister = () => {
+    if (!email || !password) {
+      return Alert.alert('Error', 'กรอกอีเมลและรหัสผ่าน');
     }
+
+    if (password !== confirm) {
+      return Alert.alert('Error', 'รหัสผ่านกับยืนยันไม่ตรง');
+    }
+
+    // ❗ ยังไม่เรียก API
+    // ❗ ยังไม่บันทึกลงฐานข้อมูล
+    // 👉 ส่งข้อมูลไปหน้า CreateProfile แทน
+    navigation.navigate('CreateProfile', {
+      email,
+      password,
+    });
   };
 
   return (
@@ -65,7 +46,9 @@ export default function RegisterScreen({ navigation }) {
           style={styles.logo}
         />
         <Text style={styles.heading}>สร้างบัญชีใหม่</Text>
-        <Text style={styles.subheading}>เริ่มต้นเส้นทางสุขภาพของคุณวันนี้ 🌿</Text>
+        <Text style={styles.subheading}>
+          เริ่มต้นเส้นทางสุขภาพของคุณวันนี้ 🌿
+        </Text>
       </View>
 
       {/* Card */}
@@ -90,7 +73,11 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={setPassword}
           />
           <TouchableOpacity onPress={() => setShowPass(!showPass)}>
-            <Ionicons name={showPass ? 'eye' : 'eye-off'} size={22} color="#777" />
+            <Ionicons
+              name={showPass ? 'eye' : 'eye-off'}
+              size={22}
+              color="#777"
+            />
           </TouchableOpacity>
         </View>
 
@@ -104,19 +91,24 @@ export default function RegisterScreen({ navigation }) {
             onChangeText={setConfirm}
           />
           <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)}>
-            <Ionicons name={showConfirm ? 'eye' : 'eye-off'} size={22} color="#777" />
+            <Ionicons
+              name={showConfirm ? 'eye' : 'eye-off'}
+              size={22}
+              color="#777"
+            />
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity
           style={[
             styles.button,
-            (!email || !password || password !== confirm || loading) && styles.buttonDisabled
+            (!email || !password || password !== confirm) &&
+              styles.buttonDisabled
           ]}
-          disabled={!email || !password || password !== confirm || loading}
+          disabled={!email || !password || password !== confirm}
           onPress={handleRegister}
         >
-          <Text style={styles.buttonText}>{loading ? 'กำลังสมัคร...' : 'สมัครสมาชิก'}</Text>
+          <Text style={styles.buttonText}>สมัครสมาชิก</Text>
         </TouchableOpacity>
 
         <View style={styles.bottomRow}>
@@ -131,7 +123,7 @@ export default function RegisterScreen({ navigation }) {
 }
 
 // =============================================
-// 💅 BEAUTIFUL STYLES
+// 💅 STYLES
 // =============================================
 const styles = StyleSheet.create({
   container: {
@@ -164,9 +156,6 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 18,
     marginTop: 25,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
     elevation: 8,
   },
 
@@ -223,4 +212,3 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
-

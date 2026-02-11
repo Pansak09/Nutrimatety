@@ -10,14 +10,18 @@ import {
 } from "react-native";
 import { API, API_BASE } from "../api";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
+import { useCallback } from "react";
 
 export default function HistoryDetail({ route, navigation }) {
   const date = route.params?.date;
   const [meals, setMeals] = useState([]);
 
-  useEffect(() => {
-    loadMeals();
-  }, [date]);      // ⭐ โหลดใหม่ทุกครั้งเมื่อ date เปลี่ยน
+  useFocusEffect(
+    useCallback(() => {
+      loadMeals();
+    }, [date])
+  );
 
   const loadMeals = async () => {
     try {
