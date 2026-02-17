@@ -65,6 +65,7 @@ export default function HomeScreen({ navigation }) {
       "0"
     )}-${String(d.getDate()).padStart(2, "0")}`;
   };
+  
   const [todayISO, setTodayISO] = useState(isoToday());
 
   const [todayText, setTodayText] = useState("");

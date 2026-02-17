@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API } from '../api';
 
 const OPTIONS = ['รักษาหุ่น', 'ลดน้ำหนัก', 'เพิ่มน้ำหนัก'];
+
 const LIFESTYLE_OPTIONS = [
   { key: "sedentary", label: "ไม่ค่อยออกกำลังกาย" },
   { key: "light", label: "ออกกำลังกายเล็กน้อย" },
@@ -84,10 +85,17 @@ export default function CreateProfileScreen({ navigation, route }) {
       // ได้ token หลังสมัครสำเร็จจริง
       await AsyncStorage.setItem("access_token", data.access_token);
 
-      // เข้า Home ทันที
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Main" }],
+      // เข้า SummaryScreen ทันที
+      navigation.navigate("Summary", {
+        name: username.trim(),
+        gender,
+        height: Number(height),
+        weight: Number(currentWeight),
+        dob: toYMD(dob),
+        goal: goalChoice,
+        lifestyle,
+        food: foodAllergies,
+        imageUri: avatarUri,
       });
 
     } catch (err) {

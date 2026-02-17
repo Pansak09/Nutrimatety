@@ -1,3 +1,4 @@
+#routers/users.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import crud
@@ -72,24 +73,27 @@ def register_with_profile(
     payload: RegisterWithProfile,
     db: Session = Depends(get_db),
 ):
-    # 1️⃣ ตรวจ email ซ้ำ
-    if crud.get_user_by_email(db, payload.email):
-        raise HTTPException(
-            status_code=400,
-            detail="Email already registered"
-        )
-
     try:
-        # 2️⃣ สร้าง user
-        hashed_pw = get_password_hash(payload.password)
-        user = models.User(
-            email=payload.email,
-            hashed_password=hashed_pw,
-        )
-        db.add(user)
-        db.flush()  # ได้ user.id
+        user = crud.get_user_by_email(db, payload.email)
 
-        # 3️⃣ สร้าง profile
+        # ถ้ายังไม่มี user → สร้างใหม่
+        if not user:
+            hashed_pw = get_password_hash(payload.password)
+            user = models.User(
+                email=payload.email,
+                hashed_password=hashed_pw,
+            )
+            db.add(user)
+            db.flush()
+
+        # ถ้ามี profile แล้ว → ห้ามสมัครซ้ำ
+        if crud.has_profile(db, user.id):
+            raise HTTPException(
+                status_code=400,
+                detail="User already completed signup"
+            )
+
+        # สร้าง profile
         profile_data = payload.profile.model_dump()
         profile_data = crud._apply_health_calculation(profile_data)
 
@@ -99,10 +103,8 @@ def register_with_profile(
         )
         db.add(profile)
 
-        # 4️⃣ commit พร้อมกัน
         db.commit()
 
-        # 5️⃣ สร้าง token
         token = create_access_token(sub=user.email)
 
         return {
@@ -112,7 +114,4 @@ def register_with_profile(
 
     except Exception as e:
         db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
+        raise HTTPException(status_code=500, detail=str(e))
