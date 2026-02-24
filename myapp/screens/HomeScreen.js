@@ -731,7 +731,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     flexDirection: "row",
-    justifyContent: "space_between",
+    justifyContent: "space-between",
     elevation: 2,
   },
 

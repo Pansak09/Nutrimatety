@@ -6,62 +6,61 @@ import Svg, { Circle } from "react-native-svg";
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export default function RadialProgressChart({
-  value,
-  goal,
-  color,
+  value = 0,
+  goal = 100,
+  color = "#4A90E2",
+  overColor = "#FF3B30",
   label,
-  hideValue = false,
-  hideLabel = false,
-  labelStyle = {}
 }) {
   const screenWidth = Dimensions.get("window").width;
 
   const radius = screenWidth * 0.10;
-  const strokeWidth = screenWidth * 0.04;
+  const strokeWidth = screenWidth * 0.035;
   const circumference = 2 * Math.PI * radius;
-
-  const animatedValue = useRef(new Animated.Value(0)).current;
-  const [displayValue, setDisplayValue] = useState(0);
-
   const size = radius * 2 + strokeWidth * 2;
-  const progress = Math.min(goal > 0 ? value / goal : 0, 1);
 
-  /* Animation */
+  const baseAnim = useRef(new Animated.Value(0)).current;
+  const overAnim = useRef(new Animated.Value(0)).current;
+
+  const safeGoal = goal > 0 ? goal : 1;
+  const percent = value / safeGoal;
+
+  const normalProgress = Math.min(percent, 1);
+  const overProgress = percent > 1 ? percent - 1 : 0;
+
   useEffect(() => {
-    // รีเซ็ตค่า animation ทุกครั้ง
-    animatedValue.stopAnimation();
-    animatedValue.setValue(0);
-    setDisplayValue(0);
-    
-    Animated.timing(animatedValue, {
-      toValue: progress * circumference,
+    baseAnim.setValue(0);
+    overAnim.setValue(0);
+
+    Animated.timing(baseAnim, {
+      toValue: normalProgress * circumference,
       duration: 700,
       useNativeDriver: false,
     }).start();
-  
-    const id = animatedValue.addListener(({ value }) => {
-      const current = goal > 0 ? (value / circumference) * goal : 0;
-      setDisplayValue(current);
-    });
-  
-    return () => animatedValue.removeListener(id);
-  }, [progress, goal]);
+
+    if (overProgress > 0) {
+      Animated.timing(overAnim, {
+        toValue: Math.min(overProgress, 1) * circumference,
+        duration: 700,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [value, goal]);
 
   return (
     <View style={styles.item}>
       <Svg width={size} height={size}>
-        
-        {/* วงกลมเทา (พื้นหลัง) */}
+        {/* Background */}
         <Circle
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#eee"
+          stroke="#EAEAEA"
           strokeWidth={strokeWidth}
           fill="transparent"
         />
 
-        {/* วงกลมสี (progress) */}
+        {/* วงปกติ */}
         <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
@@ -69,26 +68,38 @@ export default function RadialProgressChart({
           stroke={color}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
-          strokeDashoffset={animatedValue.interpolate({
+          strokeDashoffset={baseAnim.interpolate({
             inputRange: [0, circumference],
             outputRange: [circumference, 0],
           })}
           strokeLinecap="round"
           fill="transparent"
         />
+
+        {/* วงเกิน (วาดทับ) */}
+        {overProgress > 0 && (
+          <AnimatedCircle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            stroke={overColor}
+            strokeWidth={strokeWidth}
+            strokeDasharray={circumference}
+            strokeDashoffset={overAnim.interpolate({
+              inputRange: [0, circumference],
+              outputRange: [circumference, 0],
+            })}
+            strokeLinecap="round"
+            fill="transparent"
+          />
+        )}
       </Svg>
 
-      {/* ค่าแสดงผล */}
-      {!hideValue && (
-        <Text style={[styles.value, { color }]}>
-          {Math.round(displayValue)} / {Math.round(goal)}
-        </Text>
-      )}
+      <Text style={styles.value}>
+        {Math.round(value)} / {Math.round(goal)}
+      </Text>
 
-      {/* Label */}
-      {!hideLabel && (
-        <Text style={[styles.label, labelStyle]}>{label}</Text>
-      )}
+      <Text style={styles.label}>{label}</Text>
     </View>
   );
 }
@@ -99,12 +110,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 15,
     marginTop: 6,
-    textAlign: "center",
   },
   label: {
     color: "#333",
     fontSize: 13,
     marginTop: 4,
-    textAlign: "center",
   },
 });

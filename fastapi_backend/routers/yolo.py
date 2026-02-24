@@ -46,7 +46,7 @@ async def predict(file: UploadFile = File(...)):
     with raw_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # 🔥 FIX: normalize image ก่อนส่งเข้า YOLO
+    # FIX: normalize image ก่อนส่งเข้า YOLO
     try:
         image_path = normalize_image(raw_path)
     except HTTPException:
