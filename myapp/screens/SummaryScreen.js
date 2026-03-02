@@ -79,6 +79,8 @@ export default function SummaryScreen({ navigation, route }) {
     light: 1.375,
     moderate: 1.55,
     very_active: 1.725,
+    active: 1.725, // ✅ เผื่อกรณีส่ง active มาจากหน้า CreateProfile
+    athlete: 1.9,  // ✅ เผื่อกรณี athlete
   };
 
   const tdee = Math.round(bmr * (factor[lifestyle] || 1.2));
@@ -137,7 +139,6 @@ export default function SummaryScreen({ navigation, route }) {
         }
       }
 
-      // ไปหน้า Home
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -153,62 +154,79 @@ export default function SummaryScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <ProgressBar step={6} />
 
-      <Text style={styles.title}>ยินดีต้อนรับ คุณ {name ?? "-"}</Text>
+      {/* ✅ ตัวห่อเนื้อหาให้ “อยู่กลางจอ” */}
+      <View style={styles.contentWrap}>
+        <Text style={styles.title}>ยินดีต้อนรับ คุณ {name ?? "-"}</Text>
 
-      {imageUri && <Image source={{ uri: imageUri }} style={styles.avatar} />}
+        {imageUri ? (
+          <Image source={{ uri: imageUri }} style={styles.avatar} />
+        ) : null}
 
-      {/* การ์ดแคลอรี่ */}
-      <View style={styles.card}>
-        <Text style={styles.calorie}>{macro.targetCal} kcal</Text>
-        <Text style={styles.desc}>แคลอรี่ที่ควรได้รับต่อวัน</Text>
+        <View style={styles.card}>
+          <Text style={styles.calorie}>{macro.targetCal} kcal</Text>
+          <Text style={styles.desc}>แคลอรี่ที่ควรได้รับต่อวัน</Text>
 
-        <View style={styles.hr} />
+          <View style={styles.hr} />
 
-        {/* Macro 3 ช่อง */}
-        <View style={styles.macroRow}>
-          <View style={styles.macroBox}>
-            <Text style={styles.macroLabel}>โปรตีน</Text>
-            <Text style={styles.macroValue}>{macro.proteinGram} g</Text>
-          </View>
+          <View style={styles.macroRow}>
+            <View style={styles.macroBox}>
+              <Text style={styles.macroLabel}>โปรตีน</Text>
+              <Text style={styles.macroValue}>{macro.proteinGram} g</Text>
+            </View>
 
-          <View style={styles.macroBox}>
-            <Text style={styles.macroLabel}>ไขมัน</Text>
-            <Text style={styles.macroValue}>{macro.fatGram} g</Text>
-          </View>
+            <View style={styles.macroBox}>
+              <Text style={styles.macroLabel}>ไขมัน</Text>
+              <Text style={styles.macroValue}>{macro.fatGram} g</Text>
+            </View>
 
-          <View style={styles.macroBox}>
-            <Text style={styles.macroLabel}>คาร์บ</Text>
-            <Text style={styles.macroValue}>{macro.carbGram} g</Text>
+            <View style={styles.macroBox}>
+              <Text style={styles.macroLabel}>คาร์บ</Text>
+              <Text style={styles.macroValue}>{macro.carbGram} g</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* ปุ่ม */}
-      <TouchableOpacity style={styles.button} onPress={saveAndGo} disabled={saving}>
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.btnText}>เสร็จสิ้น</Text>
-        )}
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={saveAndGo}
+          disabled={saving}
+        >
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>เสร็จสิ้น</Text>}
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 // ---------------------- STYLE ----------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 22, backgroundColor: "#F8FFFC", alignItems: "center" },
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FFFC",
+  },
 
-  title: { fontSize: 24, fontWeight: "bold", marginTop: 20, color: "#145A32" },
+  // ✅ อยู่กลางหน้าจอ (จุดตัดแกน x,y)
+  contentWrap: {
+    flex: 1,
+    justifyContent: "center", // กลางแกน Y
+    alignItems: "center",     // กลางแกน X
+    paddingHorizontal: 22,
+  },
+
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    marginBottom: 12,
+    color: "#145A32",
+    textAlign: "center",
+  },
 
   avatar: {
     width: 130,
     height: 130,
     borderRadius: 65,
-    marginTop: 15,
-    marginBottom: 20,
+    marginBottom: 16,
     borderColor: "#fff",
     borderWidth: 3,
     elevation: 6,
@@ -225,7 +243,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
 
-  calorie: { fontSize: 40, textAlign: "center", fontWeight: "900", color: "#2E8B57" },
+  calorie: {
+    fontSize: 40,
+    textAlign: "center",
+    fontWeight: "900",
+    color: "#2E8B57",
+  },
   desc: { textAlign: "center", marginTop: 6, color: "#555" },
 
   hr: {
@@ -249,14 +272,19 @@ const styles = StyleSheet.create({
   },
 
   macroLabel: { fontSize: 14, color: "#555" },
-  macroValue: { marginTop: 4, fontSize: 20, fontWeight: "bold", color: "#146C43" },
+  macroValue: {
+    marginTop: 4,
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#146C43",
+  },
 
   button: {
     width: "100%",
     backgroundColor: "#007bff",
     padding: 16,
     borderRadius: 12,
-    marginTop: 30,
+    marginTop: 18,
     alignItems: "center",
   },
 

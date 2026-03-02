@@ -10,6 +10,7 @@ import {
   Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { API } from './api';
 
 export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -18,22 +19,29 @@ export default function RegisterScreen({ navigation }) {
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  const handleRegister = () => {
-    if (!email || !password) {
-      return Alert.alert('Error', 'กรอกอีเมลและรหัสผ่าน');
+  const handleRegister = async () => {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    if (!cleanEmail || !password) return Alert.alert('Error', 'กรอกอีเมลและรหัสผ่าน');
+    if (password !== confirm) return Alert.alert('Error', 'รหัสผ่านกับยืนยันไม่ตรง');
+    
+    try {
+      // ✅ เช็คอีเมลอย่างเดียว ไม่บันทึก DB
+      const { data } = await API.get('/users/check-email', {
+        params: { email: cleanEmail },
+      });
+    
+      if (!data.available) {
+        return Alert.alert('แจ้งเตือน', 'มี Gmail นี้ในระบบแล้ว');
+      }
+    
+      navigation.navigate('CreateProfile', {
+        email: cleanEmail,
+        password,
+      });
+    } catch (err) {
+      Alert.alert('Error', 'เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');
     }
-
-    if (password !== confirm) {
-      return Alert.alert('Error', 'รหัสผ่านกับยืนยันไม่ตรง');
-    }
-
-    // ❗ ยังไม่เรียก API
-    // ❗ ยังไม่บันทึกลงฐานข้อมูล
-    // 👉 ส่งข้อมูลไปหน้า CreateProfile แทน
-    navigation.navigate('CreateProfile', {
-      email,
-      password,
-    });
   };
 
   return (

@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  Alert, ScrollView, KeyboardAvoidingView, Platform, Image, Modal
+  Alert, ScrollView, KeyboardAvoidingView, Platform, Image, Modal,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,7 +24,6 @@ const LIFESTYLE_OPTIONS = [
 const toYMD = (d) => new Date(d).toISOString().slice(0, 10);
 
 export default function CreateProfileScreen({ navigation, route }) {
-  // รับ email / password จาก RegisterScreen
   const { email, password } = route.params;
 
   const [username, setUsername] = useState('');
@@ -52,12 +52,13 @@ export default function CreateProfileScreen({ navigation, route }) {
   };
 
   const onSubmit = async () => {
-    if (!username.trim()) return Alert.alert("กรุณากรอก Username");
+    const u = username.trim();
+
+    if (!u) return Alert.alert("กรุณากรอก Username");
     if (!gender) return Alert.alert("กรุณาเลือกเพศ");
     if (!goalChoice) return Alert.alert("กรุณาเลือกเป้าหมายสุขภาพ");
     if (!lifestyle) return Alert.alert("กรุณาเลือกระดับกิจกรรม");
-    if (!height || !currentWeight)
-      return Alert.alert("กรุณากรอกข้อมูลให้ครบ");
+    if (!height || !currentWeight) return Alert.alert("กรุณากรอกข้อมูลให้ครบ");
 
     setLoading(true);
     try {
@@ -65,7 +66,7 @@ export default function CreateProfileScreen({ navigation, route }) {
         email,
         password,
         profile: {
-          username: username.trim(),
+          username: u,
           gender,
           height: Number(height),
           current_weight: Number(currentWeight),
@@ -77,17 +78,12 @@ export default function CreateProfileScreen({ navigation, route }) {
         },
       };
 
-      const { data } = await API.post(
-        "/users/register-with-profile",
-        payload
-      );
+      const { data } = await API.post("/users/register-with-profile", payload);
 
-      // ได้ token หลังสมัครสำเร็จจริง
       await AsyncStorage.setItem("access_token", data.access_token);
 
-      // เข้า SummaryScreen ทันที
       navigation.navigate("Summary", {
-        name: username.trim(),
+        name: u,
         gender,
         height: Number(height),
         weight: Number(currentWeight),
@@ -100,6 +96,15 @@ export default function CreateProfileScreen({ navigation, route }) {
 
     } catch (err) {
       const msg = err.response?.data?.detail || err.message;
+
+      // ✅ ดักข้อความซ้ำแบบที่คุณต้องการ
+      if (msg === "username ซ้ำ") {
+        return Alert.alert("แจ้งเตือน", "username ซ้ำ");
+      }
+      if (msg === "มี Gmail นี้ในระบบแล้ว" || msg === "Email already registered") {
+        return Alert.alert("แจ้งเตือน", "มี Gmail นี้ในระบบแล้ว");
+      }
+
       Alert.alert("สมัครไม่สำเร็จ", msg);
     } finally {
       setLoading(false);
@@ -107,23 +112,17 @@ export default function CreateProfileScreen({ navigation, route }) {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
       <View style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
 
-          {/* Back */}
           <TouchableOpacity style={styles.back} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={26} color="#1B5E20" />
           </TouchableOpacity>
 
-          {/* Header */}
           <Text style={styles.title}>สร้างโปรไฟล์ของคุณ</Text>
           <Text style={styles.subtitle}>ข้อมูลนี้ช่วยให้ระบบแนะนำโภชนาการได้แม่นยำขึ้น 🌿</Text>
 
-          {/* Avatar */}
           <View style={styles.avatarWrap}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatar} />
@@ -140,10 +139,8 @@ export default function CreateProfileScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-          {/* Card */}
           <View style={styles.card}>
 
-            {/* Username */}
             <Text style={styles.label}>Username</Text>
             <TextInput
               style={styles.input}
@@ -151,9 +148,9 @@ export default function CreateProfileScreen({ navigation, route }) {
               onChangeText={setUsername}
               placeholder="เช่น pansak09"
               placeholderTextColor="#aaa"
+              autoCapitalize="none"
             />
 
-            {/* Gender */}
             <Text style={styles.label}>เพศ</Text>
             <View style={styles.genderRow}>
               {["male", "female"].map((g) => (
@@ -169,46 +166,30 @@ export default function CreateProfileScreen({ navigation, route }) {
               ))}
             </View>
 
-            {/* Birthday */}
             <Text style={styles.label}>วันเกิด</Text>
             <TouchableOpacity style={styles.input} onPress={() => setShowPicker(true)}>
               <Text>{toYMD(dob)}</Text>
             </TouchableOpacity>
 
-            {/* iOS Modal Picker แบบเดียวกับ EditProfileScreen */}
-            <Modal
-              transparent
-              animationType="fade"
-              visible={showPicker}
-              onRequestClose={() => setShowPicker(false)}
-            >
+            <Modal transparent animationType="fade" visible={showPicker} onRequestClose={() => setShowPicker(false)}>
               <View style={styles.iosPickerOverlay}>
                 <View style={styles.iosPickerBox}>
-
                   <DateTimePicker
                     value={dob}
                     mode="date"
                     display="spinner"
                     maximumDate={new Date()}
                     onChange={(event, selectedDate) => {
-                      if (event.type !== "dismissed") {
-                        setDob(selectedDate);
-                      }
+                      if (event.type !== "dismissed") setDob(selectedDate);
                     }}
                   />
-
-                  <TouchableOpacity
-                    style={styles.doneBtn}
-                    onPress={() => setShowPicker(false)}
-                  >
+                  <TouchableOpacity style={styles.doneBtn} onPress={() => setShowPicker(false)}>
                     <Text style={styles.doneBtnText}>เสร็จสิ้น</Text>
                   </TouchableOpacity>
-
                 </View>
               </View>
             </Modal>
 
-            {/* Height */}
             <Text style={styles.label}>ส่วนสูง (cm)</Text>
             <TextInput
               style={styles.input}
@@ -219,7 +200,6 @@ export default function CreateProfileScreen({ navigation, route }) {
               onChangeText={setHeight}
             />
 
-            {/* Weight */}
             <Text style={styles.label}>น้ำหนักปัจจุบัน (kg)</Text>
             <TextInput
               style={styles.input}
@@ -230,7 +210,6 @@ export default function CreateProfileScreen({ navigation, route }) {
               onChangeText={setCurrentWeight}
             />
 
-            {/* Allergies */}
             <Text style={styles.label}>อาหารที่แพ้ (ถ้ามี)</Text>
             <TextInput
               style={styles.input}
@@ -240,7 +219,6 @@ export default function CreateProfileScreen({ navigation, route }) {
               onChangeText={setFoodAllergies}
             />
 
-            {/* Goal */}
             <Text style={styles.label}>เป้าหมายสุขภาพ</Text>
             {OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -253,35 +231,30 @@ export default function CreateProfileScreen({ navigation, route }) {
               </TouchableOpacity>
             ))}
 
-            {/* Lifestyle */}
             <Text style={styles.label}>ระดับกิจกรรม (Lifestyle)</Text>
             {LIFESTYLE_OPTIONS.map((opt) => (
               <TouchableOpacity
                 key={opt.key}
-                style={[
-                  styles.option,
-                  lifestyle === opt.key && styles.optionSelected,
-                ]}
+                style={[styles.option, lifestyle === opt.key && styles.optionSelected]}
                 onPress={() => setLifestyle(opt.key)}
               >
-                <View
-                  style={[
-                    styles.radio,
-                    lifestyle === opt.key && styles.radioSelected,
-                  ]}
-                />
+                <View style={[styles.radio, lifestyle === opt.key && styles.radioSelected]} />
                 <Text style={styles.optionLabel}>{opt.label}</Text>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
 
-        {/* Button */}
         <View style={styles.footer}>
           <TouchableOpacity style={styles.button} onPress={onSubmit} disabled={loading}>
-            <Text style={styles.buttonText}>
-              {loading ? "กำลังสมัคร..." : "สมัครให้เสร็จ"}
-            </Text>
+            {loading ? (
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                <ActivityIndicator color="#fff" />
+                <Text style={styles.buttonText}>กำลังสมัคร...</Text>
+              </View>
+            ) : (
+              <Text style={styles.buttonText}>สมัครให้เสร็จ</Text>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -292,185 +265,43 @@ export default function CreateProfileScreen({ navigation, route }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#B7FFC7" },
-
   scrollContent: { padding: 20, paddingBottom: 160 },
-
   back: { marginTop: 40 },
 
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#1B5E20",
-    marginTop: 10,
-  },
+  title: { fontSize: 26, fontWeight: "800", color: "#1B5E20", marginTop: 10 },
+  subtitle: { fontSize: 15, color: "#444", marginBottom: 20 },
 
-  subtitle: {
-    fontSize: 15,
-    color: "#444",
-    marginBottom: 20,
-  },
+  avatarWrap: { alignItems: "center", marginBottom: 20 },
+  avatar: { width: 110, height: 110, borderRadius: 60 },
+  avatarPlaceholder: { backgroundColor: "#eee", justifyContent: "center", alignItems: "center" },
 
-  avatarWrap: {
-    alignItems: "center",
-    marginBottom: 20,
-  },
+  changeBtn: { marginTop: 10, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: "#fff", borderRadius: 10, borderWidth: 1, borderColor: "#ccc" },
+  changeBtnText: { color: "#333", fontWeight: "600" },
 
-  avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 60,
-  },
+  card: { backgroundColor: "#fff", borderRadius: 18, padding: 20, shadowColor: "#000", shadowOpacity: 0.15, shadowRadius: 12, elevation: 6 },
 
-  avatarPlaceholder: {
-    backgroundColor: "#eee",
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  label: { marginTop: 10, marginBottom: 6, fontWeight: "700", color: "#1B5E20" },
+  input: { borderWidth: 1, borderColor: "#ddd", borderRadius: 12, paddingHorizontal: 14, height: 48, backgroundColor: "#FAFAFA" },
 
-  changeBtn: {
-    marginTop: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: "#fff",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#ccc",
-  },
-
-  changeBtnText: {
-    color: "#333",
-    fontWeight: "600",
-  },
-
-  card: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-
-  label: {
-    marginTop: 10,
-    marginBottom: 6,
-    fontWeight: "700",
-    color: "#1B5E20",
-  },
-
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    height: 48,
-    backgroundColor: "#FAFAFA",
-  },
-
-  genderRow: {
-    flexDirection: "row",
-    gap: 12,
-  },
-
-  genderBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 10,
-    alignItems: "center",
-  },
-
-  genderActive: {
-    backgroundColor: "#1B7F5A",
-    borderColor: "#1B7F5A",
-  },
-
+  genderRow: { flexDirection: "row", gap: 12 },
+  genderBtn: { flex: 1, paddingVertical: 12, borderWidth: 1, borderColor: "#ccc", borderRadius: 10, alignItems: "center" },
+  genderActive: { backgroundColor: "#1B7F5A", borderColor: "#1B7F5A" },
   genderText: { color: "#333", fontWeight: "600" },
   genderTextActive: { color: "#fff", fontWeight: "700" },
 
-  option: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-
-  optionSelected: {
-    borderColor: "#1B7F5A",
-    backgroundColor: "#E3F8EE",
-  },
-
+  option: { flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: "#ccc", padding: 12, borderRadius: 10, marginBottom: 10 },
+  optionSelected: { borderColor: "#1B7F5A", backgroundColor: "#E3F8EE" },
   optionLabel: { fontSize: 16, fontWeight: "500" },
 
-  radio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: "#999",
-    marginRight: 12,
-  },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: "#999", marginRight: 12 },
+  radioSelected: { borderColor: "#1B7F5A", backgroundColor: "#1B7F5A" },
 
-  radioSelected: {
-    borderColor: "#1B7F5A",
-    backgroundColor: "#1B7F5A",
-  },
+  iosPickerOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "center", alignItems: "center", padding: 20 },
+  iosPickerBox: { width: "100%", backgroundColor: "#fff", borderRadius: 18, paddingTop: 10, paddingBottom: 20, alignItems: "center" },
+  doneBtn: { marginTop: 10, backgroundColor: "#1B7F5A", paddingHorizontal: 25, paddingVertical: 10, borderRadius: 10 },
+  doneBtnText: { color: "#fff", fontWeight: "700", fontSize: 16 },
 
-  iosPickerOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    zIndex: 9999,
-    elevation: 9999,
-  },
-
-  iosPickerBox: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingTop: 10,
-    paddingBottom: 20,
-    alignItems: "center",
-  },
-
-  doneBtn: {
-    marginTop: 10,
-    backgroundColor: "#1B7F5A",
-    paddingHorizontal: 25,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-
-  doneBtnText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 16,
-  },
-
-  footer: {
-    position: "absolute",
-    left: 20,
-    right: 20,
-    bottom: 20,
-  },
-
-  button: {
-    backgroundColor: "#1B7F5A",
-    padding: 16,
-    borderRadius: 14,
-    alignItems: "center",
-  },
-
-  buttonText: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "800",
-  },
+  footer: { position: "absolute", left: 20, right: 20, bottom: 20 },
+  button: { backgroundColor: "#1B7F5A", padding: 16, borderRadius: 14, alignItems: "center" },
+  buttonText: { color: "#fff", fontSize: 18, fontWeight: "800" },
 });

@@ -1,5 +1,5 @@
 #routers/users.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 import crud
 from schemas import UserCreate, UserLogin, Token, RegisterWithProfile
@@ -13,22 +13,9 @@ router = APIRouter(prefix="/users", tags=["users"])
 # Register (ยังไม่ถือว่าสมัครสมบูรณ์ จนกว่าจะมี profile)
 @router.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
-    # ตรวจสอบ email ในระบบว่ามีหรือยัง
     if crud.get_user_by_email(db, user.email):
-        # ถ้ามีแล้วใม่ให้ห้ามสมัครซ้ำ
-        raise HTTPException(
-            status.HTTP_400_BAD_REQUEST,
-            detail="Email already registered"
-        )
-    # ถ้ายังไม่มี สร้าง user ใหม่ (แต่ยังไม่สร้าง profile)
-    db_user = crud.create_user(db, user)
-    # สร้าง token ให้เลย 
-    token = create_access_token(sub=db_user.email)
-
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-    }
+        raise HTTPException(status_code=400, detail="Email already registered")
+    return {"ok": True}
     
 # Login (ใช้สำหรับ login เข้าสู่ระบบ ถ้าไม่มี profile จะยังไม่ถือว่าสมัครสมบูรณ์)
 @router.post("/login", response_model=Token)
@@ -70,51 +57,69 @@ def read_me(
         "email": user.email,
         "signup_completed": crud.has_profile(db, user.id),
     }
-
-@router.post("/register-with-profile")
-def register_with_profile(
-    payload: RegisterWithProfile,
+    
+@router.get("/check-email")
+def check_email(
+    email: str = Query(...),
     db: Session = Depends(get_db),
 ):
+    exists = crud.get_user_by_email(db, email) is not None
+    return {"available": (not exists)}
+
+@router.get("/check-username")
+def check_username(
+    username: str = Query(..., min_length=3),
+    db: Session = Depends(get_db),
+):
+    u = username.strip()
+    exists = (
+        db.query(models.Profile)
+        .filter(models.Profile.username == u)
+        .first()
+        is not None
+    )
+    return {"available": (not exists)}
+
+@router.post("/register-with-profile")
+def register_with_profile(payload: RegisterWithProfile, db: Session = Depends(get_db)):
     try:
-        # ตรวจสอบ email ในระบบว่ามีหรือยัง
+        # 1) เช็ค email ซ้ำ
         user = crud.get_user_by_email(db, payload.email)
+        if user:
+            raise HTTPException(status_code=400, detail="มี Gmail นี้ในระบบแล้ว")
 
-        # ถ้ายังไม่มี user = สร้างใหม่
-        if not user:
-            hashed_pw = get_password_hash(payload.password)
-            user = models.User(
-                email=payload.email,
-                hashed_password=hashed_pw,
+        # (ถ้าต้องการเช็ค username ซ้ำด้วย)
+        username = (payload.profile.username or "").strip()
+        if username:
+            exists_username = (
+                db.query(models.Profile)
+                .filter(models.Profile.username == username)
+                .first()
+                is not None
             )
-            # เพิ่ม user ลง session ก่อน เพื่อให้มี id สำหรับสร้าง profile
-            db.add(user)
-            # ใช้ flush เพื่อให้ user.id มีค่า (แต่ยังไม่ commit)
-            db.flush()
+            if exists_username:
+                raise HTTPException(status_code=400, detail="username ซ้ำ")
 
-        if crud.has_profile(db, user.id):
-            raise HTTPException(
-                status_code=400,
-                detail="User already completed signup"
-            )
+        # 2) สร้าง user
+        hashed_pw = get_password_hash(payload.password)
+        user = models.User(email=payload.email, hashed_password=hashed_pw)
+        db.add(user)
+        db.flush()
 
+        # 3) สร้าง profile
         profile_data = payload.profile.model_dump()
         profile_data = crud._apply_health_calculation(profile_data)
-        
-        profile = models.Profile(
-            user_id=user.id,
-            **profile_data
-        )
+
+        profile = models.Profile(user_id=user.id, **profile_data)
         db.add(profile)
         db.commit()
 
         token = create_access_token(sub=user.email)
+        return {"access_token": token, "token_type": "bearer"}
 
-        return {
-            "access_token": token,
-            "token_type": "bearer"
-        }
-
+    except HTTPException:
+        db.rollback()
+        raise
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))

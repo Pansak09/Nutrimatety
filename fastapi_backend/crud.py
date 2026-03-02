@@ -10,6 +10,7 @@ def calculate_age(dob: date):
     if not dob:
         return None
     today = date.today()
+    # คำนวณอายุจากวันเกิด
     age = today.year - dob.year
     if (today.month, today.day) < (dob.month, dob.day):
         age -= 1
@@ -98,7 +99,7 @@ def create_user(db: Session, user: UserCreate):
     db.refresh(db_user)
     return db_user
 
-# 🔹 Profile CRUD
+# Profile CRUD
 def get_profile_by_user(db: Session, user_id: int):
     return db.query(models.Profile).filter(models.Profile.user_id == user_id).first()
 
@@ -112,13 +113,13 @@ def _apply_health_calculation(profile_dict):
     goal = profile_dict.get("goal")
     lifestyle = profile_dict.get("lifestyle", "light")
 
-    # AGE
+    # AGE 
     age = calculate_age(dob)
 
-    # BMI
+    # BMI 
     bmi = calc_bmi(current_weight, height)
 
-    # BMR
+    # BMR 
     bmr = calc_bmr(gender, current_weight, height, age)
 
     # TDEE
@@ -200,3 +201,8 @@ def has_profile(db: Session, user_id: int) -> bool:
         .first()
         is not None
     )
+    
+def get_profile_by_username(db: Session, username: str):
+    if not username:
+        return None
+    return db.query(models.Profile).filter(models.Profile.username == username).first()

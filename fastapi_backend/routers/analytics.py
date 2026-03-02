@@ -11,9 +11,7 @@ import crud
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-# ==============================
-# CONFIG
-# ==============================
+# CONFIG 
 DAYS_RANGE = 7
 DIFF_THRESHOLD = 20  # ±20%
 
@@ -163,7 +161,7 @@ def nutrition_behavior_analysis(
                 Profile.lifestyle == profile.lifestyle,
                 Profile.date_of_birth.isnot(None),
                 Profile.goal.isnot(None),
-                group_goal_expr == user_goal_group,  # ✅ เป้าหมายสุขภาพร่วมแบ่งกลุ่ม
+                group_goal_expr == user_goal_group,  # เป้าหมายสุขภาพร่วมแบ่งกลุ่ม
                 func.date_part("year", func.age(Profile.date_of_birth)).between(age_min, age_max),
                 MealNutrition.created_at >= since_date,
             )
@@ -171,9 +169,7 @@ def nutrition_behavior_analysis(
         )
         return (q[0] or 0), (q[1] or 0)
 
-    # ==========================
     # CALCULATE
-    # ==========================
     cal_user = avg_user(MealNutrition.calories)
     cal_group, cal_count = avg_group(MealNutrition.calories)
 
@@ -186,9 +182,7 @@ def nutrition_behavior_analysis(
     fat_user = avg_user(MealNutrition.fat)
     fat_group, fat_count = avg_group(MealNutrition.fat)
 
-    # ==========================
     # RESPONSE
-    # ==========================
     return {
         "period": f"last_{DAYS_RANGE}_days",
         "peer_group": {
@@ -204,9 +198,7 @@ def nutrition_behavior_analysis(
         "fat": analyze_diff(fat_user, fat_group, fat_count),
     }
 
-# ==============================
 # Endpoint: Weekly Summary (7 วันล่าสุด) + goal
-# ==============================
 @router.get("/weekly-summary")
 def weekly_summary(
     db: Session = Depends(get_db),
