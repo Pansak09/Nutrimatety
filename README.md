@@ -8,7 +8,6 @@
 ## ✨ ฟีเจอร์หลัก (Key Features)
 
 ### 🔐 ระบบสมาชิกและความปลอดภัย (Authentication)
-* **Secure Login/Register:** สมัครและเข้าสู่ระบบด้วย Email/Password (Encrypted with Bcrypt)
 * **JWT Authentication:** ยืนยันตัวตนผ่าน Token เพื่อความปลอดภัยในการเข้าถึงข้อมูล
 
 ### 👤 โปรไฟล์สุขภาพอัจฉริยะ (Smart Health Profile)
@@ -22,7 +21,7 @@
 * **Menu Database:** เลือกบันทึกจากฐานข้อมูลเมนูอาหารที่มีโภชนาการระบุไว้แล้ว
 
 ### 📸 AI & Image Features
-* **AI Food Analysis:** ระบบวิเคราะห์รูปภาพอาหารเพื่อประเมินแคลอรี่และชื่อเมนู (Smart Recognition)
+* **AI Food Analysis:** ระบบวิเคราะห์รูปภาพอาหาร (Smart Recognition)
 * **Photo Gallery:** อัปโหลดและเก็บรูปภาพอาหารในแต่ละมื้อเพื่อเป็น Diary
 
 ### 📊 แดชบอร์ดและประวัติ (Dashboard & History)
