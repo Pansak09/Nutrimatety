@@ -14,11 +14,12 @@ import {
   Modal
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import DateTimePicker from "@react-native-community/datetimepicker";
+//import DateTimePicker from "@react-native-community/datetimepicker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { API } from "../api";
 import { uploadAvatar } from "../utils/uploadAvatar";
+import { DatePicker } from '../components/date-picker';
 
 const GOAL_OPTIONS = ["รักษาหุ่น", "ลดน้ำหนัก", "เพิ่มน้ำหนัก"];
 const LIFESTYLE_OPTIONS = [
@@ -305,46 +306,11 @@ export default function EditProfileScreen({ navigation }) {
 
 
             {/* Birthday */}
-            <Text style={styles.label}>วันเกิด</Text>
-            <TouchableOpacity
-              style={[styles.input, styles.dateInput]}
-              onPress={() => setShowIOSPicker(true)}
-            >
-              <Ionicons name="calendar-outline" size={18} color="#555" />
-              <Text style={styles.dateText}>{toYMD(dob)}</Text>
-            </TouchableOpacity>
-
-            <Modal
-              transparent
-              animationType="fade"
-              visible={showIOSPicker}
-              onRequestClose={() => setShowIOSPicker(false)}
-            >
-              <View style={styles.iosPickerOverlay}>
-                <View style={styles.iosPickerBox}>
-                  
-                  <DateTimePicker
-                    value={dob}
-                    mode="date"
-                    display="spinner"
-                    maximumDate={new Date()}
-                    onChange={(event, selectedDate) => {
-                      if (event.type !== "dismissed") {
-                        setDob(selectedDate);
-                      }
-                    }}
-                  />
-
-                  <TouchableOpacity
-                    style={styles.doneBtn}
-                    onPress={() => setShowIOSPicker(false)}
-                  >
-                    <Text style={styles.doneBtnText}>เสร็จสิ้น</Text>
-                  </TouchableOpacity>
-
-                </View>
-              </View>
-            </Modal>
+            <DatePicker
+              label="วันเกิด"
+              value={dob}
+              onChange={setDob}
+            />
 
             {/* Height */}
             <Text style={styles.label}>ส่วนสูง (cm)</Text>

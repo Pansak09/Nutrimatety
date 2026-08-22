@@ -6,10 +6,11 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import DateTimePicker from '@react-native-community/datetimepicker';
+//import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API } from '../api';
+import { DatePicker } from '../components/date-picker';
 
 const OPTIONS = ['รักษาหุ่น', 'ลดน้ำหนัก', 'เพิ่มน้ำหนัก'];
 
@@ -166,29 +167,11 @@ export default function CreateProfileScreen({ navigation, route }) {
               ))}
             </View>
 
-            <Text style={styles.label}>วันเกิด</Text>
-            <TouchableOpacity style={styles.input} onPress={() => setShowPicker(true)}>
-              <Text>{toYMD(dob)}</Text>
-            </TouchableOpacity>
-
-            <Modal transparent animationType="fade" visible={showPicker} onRequestClose={() => setShowPicker(false)}>
-              <View style={styles.iosPickerOverlay}>
-                <View style={styles.iosPickerBox}>
-                  <DateTimePicker
-                    value={dob}
-                    mode="date"
-                    display="spinner"
-                    maximumDate={new Date()}
-                    onChange={(event, selectedDate) => {
-                      if (event.type !== "dismissed") setDob(selectedDate);
-                    }}
-                  />
-                  <TouchableOpacity style={styles.doneBtn} onPress={() => setShowPicker(false)}>
-                    <Text style={styles.doneBtnText}>เสร็จสิ้น</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
+            <DatePicker
+              label="วันเกิด"
+              value={dob}
+              onChange={setDob}
+            />
 
             <Text style={styles.label}>ส่วนสูง (cm)</Text>
             <TextInput

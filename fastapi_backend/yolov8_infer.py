@@ -2,7 +2,6 @@
 from ultralytics import YOLO
 from pathlib import Path
 
-# ⭐ รายการ class ที่คุณเทรน YOLOv8 ไว้
 CLASS_MAP = [
     "Fried Rice",
     "Pad Thai",
