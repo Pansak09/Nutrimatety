@@ -18,6 +18,30 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API } from "../api";
 import RadialProgressChart from "../components/RadialProgressChart";
 
+// ===================== PALETTE (health-focused) =====================
+// Deep teal for structure/headers, sage/mint for freshness & growth,
+// warm coral only for energy/highlight numbers, soft cream background.
+const COLORS = {
+  bg: "#F4FBF6",
+  card: "#FFFFFF",
+  primaryDark: "#0F4C3A",
+  primary: "#1B8A5A",
+  primarySoft: "#E3F6EA",
+  mint: "#2FBF87",
+  accentEnergy: "#FF7A59",
+  accentProtein: "#3A7BFF",
+  accentCarb: "#F5B942",
+  accentFat: "#FF5FA2",
+  textMain: "#0F2E27",
+  textSub: "#5B7369",
+  border: "#E3EEE7",
+  warnBg: "#FFF6E5",
+  warnBorder: "#F0B429",
+  encourageBg: "#EAF9EF",
+  encourageBorder: "#2FBF87",
+  overlay: "rgba(11,38,30,0.55)",
+};
+
 // key สำหรับเก็บค่าเป้าหมายในเครื่อง
 const buildGoalKey = (userId) => `nutrition_goals_v1_user_${userId}`;
 
@@ -65,11 +89,11 @@ export default function HomeScreen({ navigation }) {
       "0"
     )}-${String(d.getDate()).padStart(2, "0")}`;
   };
-  
+
   const [todayISO, setTodayISO] = useState(isoToday());
 
   const [todayText, setTodayText] = useState("");
-  
+
   const ANALYTICS_LAST_RUN_KEY = "nutrition_analytics_last_run";
   const [weeklySummary, setWeeklySummary] = useState("");
   const [encourageMessage, setEncourageMessage] = useState("");
@@ -312,6 +336,9 @@ export default function HomeScreen({ navigation }) {
   const displayBmr = bmr ? `${bmr} kcal` : "-";
   const displayTdee = tdee ? `${tdee} kcal` : "-";
 
+  // เปอร์เซ็นต์ความคืบหน้าพลังงาน (สำหรับ progress bar เสริม)
+  const kcalPct = kcalGoal ? Math.min(100, Math.round((totalKcal / kcalGoal) * 100)) : 0;
+
   /* ---------------- UI START ---------------- */
   const openMenuFor = (meal) => {
     setSelectedMeal(meal);
@@ -362,90 +389,110 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#D5FFE3" }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingTop: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingTop: 8, paddingBottom: 100 }}
       >
+        {/* =====================================================
+            Header: greeting strip
+        ===================================================== */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerIconWrap}>
+            <Ionicons name={profile?.avatar || "person"} size={22} color={COLORS.primary} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.headerGreeting}>
+              {profile?.username ? `สวัสดี, ${profile.username}` : "สวัสดี"}
+            </Text>
+            <Text style={styles.headerSub}>{todayText}</Text>
+          </View>
+        </View>
+
         {/* =====================================================
             Section: พลังงานรวมวันนี้
         ===================================================== */}
-        <Text style={styles.sectionHeader}>พลังงานรวมวันนี้</Text>
+        <SectionHeader label="พลังงานรวมวันนี้" />
 
         <View style={styles.energyCard}>
           <RadialProgressChart
-            key={todayISO} 
-            size={160}
+            key={todayISO}
+            size={150}
             value={totalKcal}
             goal={kcalGoal}
-            color="#FF6B6B"
+            color={COLORS.accentEnergy}
             hideValue={true}
             hideLabel={true}
           />
 
           <View style={styles.energyInfo}>
-            <Text style={styles.todayText}>{todayText}</Text>
+            <View style={styles.kcalPill}>
+              <Ionicons name="flame" size={14} color={COLORS.accentEnergy} />
+              <Text style={styles.kcalPillText}>{kcalPct}% ของเป้าหมาย</Text>
+            </View>
+
             <Text style={styles.kcalBig}>
-              {Math.round(totalKcal)} / {Math.round(kcalGoal || 0)}
+              {Math.round(totalKcal)}
+              <Text style={styles.kcalGoalText}> / {Math.round(kcalGoal || 0)}</Text>
             </Text>
-            <Text style={styles.kcalUnit}>kcal</Text>
+            <Text style={styles.kcalUnit}>kcal วันนี้</Text>
 
             <TouchableOpacity
               style={styles.goalBtn}
               onPress={openGoalModal}
+              activeOpacity={0.8}
             >
-              <Ionicons name="settings-outline" size={18} color="#333" />
+              <Ionicons name="settings-outline" size={16} color={COLORS.primaryDark} />
               <Text style={styles.goalBtnText}>ตั้งค่าเป้าหมาย</Text>
             </TouchableOpacity>
           </View>
         </View>
-        
+
         {/*Weekly Summary */}
         {weeklySummary && (
-          <View style={[styles.alertBox, { borderLeftColor: "#4CAF50" }]}>
-            <Text style={styles.alertTitle}>สรุปพฤติกรรมการกิน</Text>
-            <Text style={styles.alertText}>{weeklySummary}</Text>
+          <View style={styles.alertBox}>
+            <View style={styles.alertIconWrap}>
+              <Ionicons name="stats-chart" size={16} color={COLORS.warnBorder} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertTitle}>สรุปพฤติกรรมการกิน</Text>
+              <Text style={styles.alertText}>{weeklySummary}</Text>
+            </View>
           </View>
         )}
 
         {/*Encouragement */}
         {encourageMessage && (
-          <View
-            style={[
-              styles.alertBox,
-              { backgroundColor: "#E8F5E9", borderLeftColor: "#4CAF50" },
-            ]}
-          >
-            {/*<Text style={[styles.alertTitle, { color: "#2E7D32" }]}>
-              กำลังใจวันนี้
-            </Text>*/}
-            <Text style={[styles.alertText, { color: "#2E7D32" }]}>
-              {encourageMessage}
-            </Text>
+          <View style={styles.encourageBox}>
+            <Ionicons name="heart" size={16} color={COLORS.encourageBorder} />
+            <Text style={styles.encourageText}>{encourageMessage}</Text>
           </View>
         )}
 
         {/* =====================================================
             Section: สรุปโภชนาการวันนี้
         ===================================================== */}
-        <Text style={styles.sectionHeader}>สรุปโภชนาการวันนี้</Text>
+        <SectionHeader icon="nutrition" label="สรุปโภชนาการวันนี้" />
 
         <View style={styles.macroRow}>
           <MacroBox
             label="โปรตีน"
-            color="#4A90E2"
+            icon="barbell-outline"
+            color={COLORS.accentProtein}
             value={totalProtein}
             goal={proteinTarget || 0}
           />
           <MacroBox
             label="คาร์บ"
-            color="#F5C542"
+            icon="restaurant-outline"
+            color={COLORS.accentCarb}
             value={totalCarb}
             goal={carbTarget || 0}
           />
           <MacroBox
             label="ไขมัน"
-            color="#FF4FA7"
+            icon="water-outline"
+            color={COLORS.accentFat}
             value={totalFat}
             goal={fatTarget || 0}
           />
@@ -455,23 +502,24 @@ export default function HomeScreen({ navigation }) {
         {/* =====================================================
             Section: บันทึกรายการอาหาร
         ===================================================== */}
-        <Text style={[styles.sectionHeader, { marginTop: 10 }]}>
-          บันทึกรายการอาหาร
-        </Text>
+        <SectionHeader icon="add-circle" label="บันทึกรายการอาหาร" />
 
         <MealButton
-          title="🍳 มื้อเช้า"
-          color="#FFE7C7"
+          title="มื้อเช้า"
+          emoji="🍳"
+          subtitle={`${entriesByMeal["เช้า"].length} รายการ`}
           onPress={() => openMenuFor("เช้า")}
         />
         <MealButton
-          title="🍛 มื้อกลางวัน"
-          color="#FFF0D1"
+          title="มื้อกลางวัน"
+          emoji="🍛"
+          subtitle={`${entriesByMeal["กลางวัน"].length} รายการ`}
           onPress={() => openMenuFor("กลางวัน")}
         />
         <MealButton
-          title="🍲 มื้อเย็น"
-          color="#FFD7D7"
+          title="มื้อเย็น"
+          emoji="🍲"
+          subtitle={`${entriesByMeal["เย็น"].length} รายการ`}
           onPress={() => openMenuFor("เย็น")}
         />
 
@@ -479,24 +527,30 @@ export default function HomeScreen({ navigation }) {
             Section: ค่าทางโภชนาการ
         ===================================================== */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>ค่าทางโภชนาการของคุณ</Text>
+          <View style={styles.infoTitleRow}>
+            <Ionicons name="body-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.infoTitle}>ค่าทางโภชนาการของคุณ</Text>
+          </View>
           <InfoRow label="BMI" value={bmi} />
           <InfoRow label="BMR" value={displayBmr} />
-          <InfoRow label="TDEE" value={displayTdee} />
+          <InfoRow label="TDEE" value={displayTdee} last />
         </View>
 
         {/* =====================================================
             Section: โภชนาการที่ควรได้รับต่อวัน
         ===================================================== */}
         <View style={styles.infoCard}>
-          <Text style={styles.infoTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
+          <View style={styles.infoTitleRow}>
+            <Ionicons name="checkmark-circle-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.infoTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
+          </View>
           <InfoRow
             label="พลังงานรวม"
             value={kcalGoal ? `${Math.round(kcalGoal)} kcal` : "-"}
           />
           <InfoRow label="โปรตีน" value={`${Math.round(proteinTarget || 0)} g`} />
           <InfoRow label="คาร์โบไฮเดรต" value={`${Math.round(carbTarget || 0)} g`} />
-          <InfoRow label="ไขมัน" value={`${Math.round(fatTarget || 0)} g`} />
+          <InfoRow label="ไขมัน" value={`${Math.round(fatTarget || 0)} g`} last />
         </View>
 
         {/* =====================================================
@@ -505,7 +559,13 @@ export default function HomeScreen({ navigation }) {
         <Modal transparent visible={goalModal} animationType="fade">
           <View style={styles.modalOverlay}>
             <View style={styles.modalBox}>
+              <View style={styles.modalIconCircle}>
+                <Ionicons name="flag-outline" size={22} color={COLORS.primary} />
+              </View>
               <Text style={styles.modalTitle}>ตั้งค่าเป้าหมาย</Text>
+              <Text style={styles.modalSubtitle}>
+                ปรับเป้าหมายพลังงานและสารอาหารให้เหมาะกับคุณ
+              </Text>
 
               <GoalInput
                 label="พลังงาน (kcal)"
@@ -534,13 +594,16 @@ export default function HomeScreen({ navigation }) {
               <TouchableOpacity
                 style={styles.saveBtn}
                 onPress={onSaveGoal}
+                activeOpacity={0.85}
               >
-                <Text style={styles.saveText}>✔ บันทึกเป้าหมาย</Text>
+                <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                <Text style={styles.saveText}>บันทึกเป้าหมาย</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.closeBtn}
                 onPress={() => setGoalModal(false)}
+                activeOpacity={0.85}
               >
                 <Text style={styles.closeText}>ปิด</Text>
               </TouchableOpacity>
@@ -554,33 +617,49 @@ export default function HomeScreen({ navigation }) {
         <Modal transparent visible={menuVisible} animationType="fade">
           <View style={styles.overlayAdd}>
             <View style={styles.addBox}>
+              <View style={styles.addHandle} />
               <Text style={styles.addTitle}>เพิ่มรายการ • {selectedMeal}</Text>
 
               <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: "#E8F1FF" }]}
+                style={[styles.addBtn, { backgroundColor: COLORS.primarySoft }]}
                 onPress={() => {
                   setMenuVisible(false);
                   navigation.navigate("FoodForm1", { meal: selectedMeal });
                 }}
+                activeOpacity={0.85}
               >
-                <Ionicons name="create-outline" color="#3A7BFF" size={22} />
-                <Text style={styles.addText}>กรอกด้วยตัวเอง</Text>
+                <View style={[styles.addBtnIcon, { backgroundColor: "#DCEEFF" }]}>
+                  <Ionicons name="create-outline" color={COLORS.accentProtein} size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.addText}>กรอกด้วยตัวเอง</Text>
+                  <Text style={styles.addSubText}>บันทึกข้อมูลอาหารเอง</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#99A9A3" />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.addBtn, { backgroundColor: "#EFFFF1" }]}
+                style={[styles.addBtn, { backgroundColor: COLORS.primarySoft }]}
                 onPress={() => {
                   setMenuVisible(false);
                   navigation.navigate("Camera", { meal: selectedMeal });
                 }}
+                activeOpacity={0.85}
               >
-                <Ionicons name="camera-outline" color="#34C759" size={22} />
-                <Text style={styles.addText}>ถ่ายภาพ • วิเคราะห์อาหาร</Text>
+                <View style={[styles.addBtnIcon, { backgroundColor: "#DFFAEA" }]}>
+                  <Ionicons name="camera-outline" color={COLORS.mint} size={20} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.addText}>ถ่ายภาพ • วิเคราะห์อาหาร</Text>
+                  <Text style={styles.addSubText}>ให้ AI ช่วยประเมินให้</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color="#99A9A3" />
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={styles.addClose}
                 onPress={() => setMenuVisible(false)}
+                activeOpacity={0.85}
               >
                 <Text style={styles.addCloseText}>ปิด</Text>
               </TouchableOpacity>
@@ -589,6 +668,16 @@ export default function HomeScreen({ navigation }) {
         </Modal>
       </ScrollView>
     </SafeAreaView>
+  );
+}
+
+/* ---------------------- Section Header ---------------------- */
+function SectionHeader({ icon, label }) {
+  return (
+    <View style={styles.sectionHeaderRow}>
+      <Ionicons name={icon} size={18} color={COLORS.primary} />
+      <Text style={styles.sectionHeader}>{label}</Text>
+    </View>
   );
 }
 
@@ -609,72 +698,143 @@ function GoalInput({ label, value, onChange }) {
 }
 
 /* ---------------------- Macro Box ---------------------- */
-function MacroBox({ label, value, goal, color }) {
+function MacroBox({ label, value, goal, color, icon }) {
   return (
     <View style={styles.macroBox}>
       <RadialProgressChart value={value} goal={goal} color={color} />
-      <Text style={styles.macroLabel}>{label}</Text>
+      <View style={styles.macroLabelRow}>
+        <Ionicons name={icon} size={13} color={color} />
+        <Text style={styles.macroLabel}>{label}</Text>
+      </View>
+      <Text style={styles.macroValue}>
+        {Math.round(value)}<Text style={styles.macroGoal}>/{Math.round(goal)}g</Text>
+      </Text>
     </View>
   );
 }
 
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, last }) {
   return (
-    <View style={styles.infoRow}>
+    <View style={[styles.infoRow, last && { borderBottomWidth: 0 }]}>
       <Text style={styles.infoLabel}>{label}</Text>
       <Text style={styles.infoValue}>{value}</Text>
     </View>
   );
 }
 
-function MealButton({ title, onPress, color }) {
+function MealButton({ title, emoji, subtitle, onPress }) {
   return (
     <TouchableOpacity
-      style={[styles.mealButton, { backgroundColor: color }]}
+      style={styles.mealButton}
       onPress={onPress}
+      activeOpacity={0.85}
     >
-      <Text style={styles.mealText}>{title}</Text>
-      <Ionicons name="chevron-forward" size={20} color="#555" />
+      <View style={styles.mealEmojiWrap}>
+        <Text style={styles.mealEmoji}>{emoji}</Text>
+      </View>
+      <View style={{ flex: 1, marginLeft: 12 }}>
+        <Text style={styles.mealText}>{title}</Text>
+        <Text style={styles.mealSubtext}>{subtitle}</Text>
+      </View>
+      <View style={styles.mealAddCircle}>
+        <Ionicons name="add" size={18} color={COLORS.primary} />
+      </View>
     </TouchableOpacity>
   );
 }
 
 /* ======================= STYLE ======================= */
 const styles = StyleSheet.create({
-  container: { backgroundColor: "#D5FFE3" },
+  container: { backgroundColor: COLORS.bg },
 
-  sectionHeader: {
-    fontSize: 22,
-    fontWeight: "800",
+  /* Header */
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 18,
-    marginTop: 14,
-    marginBottom: 8,
-    color: "#1D4D4F",
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  headerIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  headerGreeting: { fontSize: 18, fontWeight: "800", color: COLORS.primaryDark },
+  headerSub: { fontSize: 13, color: COLORS.textSub, marginTop: 2 },
+
+  /* Section header */
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    marginTop: 18,
+    marginBottom: 10,
+  },
+  sectionHeader: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginLeft: 8,
+    color: COLORS.primaryDark,
   },
 
   /* Energy Card */
   energyCard: {
     marginHorizontal: 14,
     padding: 18,
-    backgroundColor: "#fff",
-    borderRadius: 22,
+    backgroundColor: COLORS.card,
+    borderRadius: 24,
     flexDirection: "row",
     alignItems: "center",
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
     elevation: 4,
   },
-  
-  energyInfo: { marginLeft: 20 },
-  todayText: { fontSize: 15, color: "#444" },
 
-  kcalBig: { fontSize: 34, fontWeight: "900", color: "#FF6B6B", marginTop: 4 },
-  kcalUnit: { color: "#666", marginTop: -6, fontSize: 16 },
+  energyInfo: { marginLeft: 18, flex: 1 },
 
-  goalBtn: { flexDirection: "row", alignItems: "center", marginTop: 10 },
+  kcalPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#FFF1EC",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 6,
+  },
+  kcalPillText: {
+    marginLeft: 4,
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.accentEnergy,
+  },
+
+  kcalBig: { fontSize: 32, fontWeight: "900", color: COLORS.textMain },
+  kcalGoalText: { fontSize: 18, fontWeight: "700", color: COLORS.textSub },
+  kcalUnit: { color: COLORS.textSub, marginTop: -2, fontSize: 13 },
+
+  goalBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    alignSelf: "flex-start",
+    backgroundColor: COLORS.primarySoft,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
   goalBtnText: {
-    marginLeft: 5,
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    color: COLORS.primaryDark,
   },
 
   /* Macro Row */
@@ -682,120 +842,187 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     paddingHorizontal: 14,
-    marginTop: 8,
   },
 
   macroBox: {
     width: "32%",
-    backgroundColor: "#fff",
-    paddingVertical: 18,
+    backgroundColor: COLORS.card,
+    paddingVertical: 16,
     borderRadius: 20,
     alignItems: "center",
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
 
-  macroLabel: { marginTop: 6, fontSize: 15, fontWeight: "700", color: "#444" },
+  macroLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+  },
+  macroLabel: { marginLeft: 4, fontSize: 13, fontWeight: "700", color: COLORS.textMain },
+  macroValue: { marginTop: 3, fontSize: 12, fontWeight: "700", color: COLORS.textSub },
+  macroGoal: { fontWeight: "500", color: "#A2B3AC" },
 
   /* Info Card */
   infoCard: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.card,
     marginHorizontal: 14,
     marginTop: 16,
     padding: 18,
     borderRadius: 20,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 3,
   },
 
+  infoTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 10,
+  },
   infoTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "800",
-    marginBottom: 12,
-    color: "#1D4D4F",
+    marginLeft: 8,
+    color: COLORS.primaryDark,
   },
 
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 10,
-    borderBottomColor: "#DDD",
+    borderBottomColor: COLORS.border,
     borderBottomWidth: 1,
   },
 
-  infoLabel: { fontSize: 15, color: "#555" },
-  infoValue: { fontWeight: "800", fontSize: 16, color: "#1D4D4F" },
+  infoLabel: { fontSize: 14, color: COLORS.textSub },
+  infoValue: { fontWeight: "800", fontSize: 15, color: COLORS.textMain },
 
   /* Meal Button */
   mealButton: {
     marginHorizontal: 14,
     marginTop: 10,
-    padding: 16,
-    borderRadius: 16,
+    padding: 14,
+    borderRadius: 18,
     flexDirection: "row",
-    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: COLORS.card,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
-
-  mealText: { fontSize: 18, fontWeight: "700", color: "#444" },
+  mealEmojiWrap: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  mealEmoji: { fontSize: 22 },
+  mealText: { fontSize: 16, fontWeight: "800", color: COLORS.textMain },
+  mealSubtext: { fontSize: 12, color: COLORS.textSub, marginTop: 2 },
+  mealAddCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 
   /* Modal ตั้งค่าเป้าหมาย */
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: COLORS.overlay,
     justifyContent: "center",
     paddingHorizontal: 20,
   },
 
   modalBox: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.card,
     padding: 24,
-    borderRadius: 16,
+    borderRadius: 22,
+  },
+
+  modalIconCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "center",
+    marginBottom: 10,
   },
 
   modalTitle: {
     fontSize: 20,
     fontWeight: "800",
-    marginBottom: 12,
+    marginBottom: 4,
     textAlign: "center",
+    color: COLORS.primaryDark,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: COLORS.textSub,
+    textAlign: "center",
+    marginBottom: 16,
   },
 
   inputGroup: { marginBottom: 12 },
-  inputLabel: { fontSize: 15, fontWeight: "600", marginBottom: 6 },
+  inputLabel: { fontSize: 14, fontWeight: "700", marginBottom: 6, color: COLORS.textMain },
   inputBox: {
-    backgroundColor: "#EEE",
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     padding: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     fontSize: 16,
+    color: COLORS.textMain,
   },
 
   saveBtn: {
-    backgroundColor: "#1B8A5A",
-    paddingVertical: 12,
-    borderRadius: 10,
-    marginTop: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 13,
+    borderRadius: 14,
+    marginTop: 8,
   },
   saveText: {
     color: "#fff",
-    fontSize: 17,
-    fontWeight: "700",
+    fontSize: 16,
+    fontWeight: "800",
     textAlign: "center",
+    marginLeft: 6,
   },
 
   closeBtn: {
-    paddingVertical: 10,
-    borderRadius: 10,
-    backgroundColor: "#DDD",
+    paddingVertical: 11,
+    borderRadius: 14,
+    backgroundColor: COLORS.bg,
     marginTop: 10,
   },
   closeText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     textAlign: "center",
+    color: COLORS.textSub,
   },
 
   /* Modal เพิ่มอาหาร */
   overlayAdd: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: COLORS.overlay,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 20,
@@ -803,73 +1030,119 @@ const styles = StyleSheet.create({
 
   addBox: {
     width: "100%",
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.card,
     padding: 22,
-    borderRadius: 18,
+    borderRadius: 24,
     alignItems: "center",
   },
 
-  addTitle: {
-    fontSize: 20,
-    fontWeight: "800",
+  addHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.border,
     marginBottom: 14,
-    color: "#333",
+  },
+
+  addTitle: {
+    fontSize: 18,
+    fontWeight: "800",
+    marginBottom: 16,
+    color: COLORS.primaryDark,
   },
 
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
     width: "100%",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 16,
     marginBottom: 10,
+  },
+  addBtnIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
   },
 
   addText: {
-    marginLeft: 12,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
+    fontSize: 15,
+    fontWeight: "700",
+    color: COLORS.textMain,
+  },
+  addSubText: {
+    fontSize: 12,
+    color: COLORS.textSub,
+    marginTop: 1,
   },
 
   addClose: {
-    marginTop: 12,
+    marginTop: 8,
     paddingVertical: 10,
     paddingHorizontal: 30,
     borderRadius: 12,
-    backgroundColor: "#EEE",
+    backgroundColor: COLORS.bg,
   },
 
   addCloseText: {
-    color: "#444",
-    fontSize: 15,
+    color: COLORS.textSub,
+    fontSize: 14,
     fontWeight: "700",
   },
 
+  /* Weekly summary alert */
   alertBox: {
-  backgroundColor: "#FFF8E1",
-  marginHorizontal: 14,
-  marginTop: 14,
-  padding: 14,
-  borderRadius: 16,
-  borderLeftWidth: 5,
-  borderLeftColor: "#F5C542",
-  elevation: 2,
+    flexDirection: "row",
+    backgroundColor: COLORS.warnBg,
+    marginHorizontal: 14,
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.warnBorder,
   },
-
+  alertIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#FFF",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
   alertTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "800",
-    marginBottom: 6,
+    marginBottom: 4,
     color: "#7A5C00",
   },
-
   alertText: {
-    fontSize: 14,
-    color: "#555",
-    marginTop: 4,
+    fontSize: 13,
+    color: "#5B5237",
+    lineHeight: 18,
   },
 
+  /* Encouragement */
+  encourageBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.encourageBg,
+    marginHorizontal: 14,
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 18,
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.encourageBorder,
+  },
+  encourageText: {
+    marginLeft: 10,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#1D5B41",
+    flex: 1,
+  },
 });
-

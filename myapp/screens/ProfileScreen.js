@@ -2,15 +2,37 @@ import React, { useEffect, useState, useCallback } from "react";
 import {
   View, Text, Image, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, useWindowDimensions,
-  Alert
+  Alert, Platform
 } from "react-native";
 
 import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { API } from "../api";
 
-// ⭐ เพิ่ม SafeAreaView
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// ===================== PALETTE (matches HomeScreen) =====================
+const COLORS = {
+  bg: "#F6FAF8",
+  card: "#FFFFFF",
+  primaryDark: "#0F4C3A",
+  primary: "#1B8A5A",
+  primarySoft: "#E7F6EC",
+  mint: "#2FBF87",
+  gradientStart: "#1FAF7A",
+  gradientEnd: "#0F4C3A",
+  accentBlue: "#1565C0",
+  accentBlueSoft: "#E3F2FD",
+  danger: "#B00020",
+  dangerSoft: "#FDECEC",
+  textMain: "#0F2E27",
+  textSub: "#6C8079",
+  textFaint: "#9FB1AA",
+  border: "#EAF2ED",
+  overlay: "rgba(9,28,22,0.55)",
+};
 
 export default function ProfileScreen() {
   const navigation = useNavigation();
@@ -96,7 +118,7 @@ export default function ProfileScreen() {
             try {
               // เรียก API ลบบัญชี
               await API.delete("/profiles/me");
-            
+
               // ล้าง token แล้วกลับหน้า Auth
               await AsyncStorage.removeItem("access_token");
               navigation.reset({ index: 0, routes: [{ name: "Auth" }] });
@@ -168,8 +190,8 @@ export default function ProfileScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeLoading}>
-        <ActivityIndicator size="large" color="#1B7F5A" />
-        <Text style={{ marginTop: 12, color: "#1B7F5A" }}>กำลังโหลดข้อมูล...</Text>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>กำลังโหลดข้อมูล...</Text>
       </SafeAreaView>
     );
   }
@@ -178,13 +200,17 @@ export default function ProfileScreen() {
   if (err) {
     return (
       <SafeAreaView style={styles.safeError}>
+        <View style={styles.errorIconWrap}>
+          <Ionicons name="alert-circle-outline" size={30} color={COLORS.danger} />
+        </View>
         <Text style={styles.errorText}>{err}</Text>
 
-        <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()}>
-          <Text style={styles.retryText}>🔄 ลองใหม่</Text>
+        <TouchableOpacity style={styles.retryBtn} onPress={() => fetchData()} activeOpacity={0.85}>
+          <Ionicons name="refresh" size={17} color="#fff" />
+          <Text style={styles.retryText}>ลองใหม่</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout} activeOpacity={0.85}>
           <Text style={styles.logoutText}>ออกจากระบบ</Text>
         </TouchableOpacity>
       </SafeAreaView>
@@ -206,94 +232,134 @@ export default function ProfileScreen() {
      MAIN UI
      ===================================================== */
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 120 }}>
+    <SafeAreaView style={styles.safe} edges={["top"]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 120 }}
+        showsVerticalScrollIndicator={false}
+      >
 
-        {/* ================= Header ================= */}
-        <View style={styles.profileCard}>
-          <View style={styles.headerRow}>
-            {avatarUri ? (
-              <Image
-                source={{ uri: avatarUri }}
-                style={[
-                  styles.avatar,
-                  { width: width * 0.27, height: width * 0.27, borderRadius: width * 0.14 }
-                ]}
-              />
-            ) : (
-              <View
-                style={[
-                  styles.avatarPlaceholder,
-                  { width: width * 0.27, height: width * 0.27 }
-                ]}
-              >
-                <Text style={styles.avatarPlaceholderText}>No Image</Text>
-              </View>
-            )}
-
-            <View style={styles.headerTextBox}>
-              <Text style={[styles.name, { fontSize: width * 0.058 }]}>
-                {profile?.username || "-"}
-              </Text>
-
-              <Text style={[styles.email, { fontSize: width * 0.04 }]}>
-                {user?.email || "-"}
-              </Text>
-
-              <Text style={styles.goalChip}>
-                🎯 เป้าหมาย: {profile?.goal || "-"}
-              </Text>
-
-              <Text style={[styles.goalChip, { backgroundColor: "#E3F2FD", color: "#1565C0" }]}>
-                🏋ระดับกิจกรรม: {LIFESTYLE_LABEL[profile?.lifestyle]}
-              </Text>
-
-            </View>
-
+        {/* ================= Header (gradient band) ================= */}
+        <LinearGradient
+          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerBand}
+        >
+          <View style={styles.headerTopRow}>
+            <Text style={styles.headerTitle}>โปรไฟล์ของฉัน</Text>
             <TouchableOpacity
               style={styles.editBtn}
               onPress={() => navigation.navigate("EditProfile")}
+              activeOpacity={0.85}
             >
+              <Ionicons name="pencil" size={14} color={COLORS.primaryDark} />
               <Text style={styles.editText}>แก้ไข</Text>
             </TouchableOpacity>
           </View>
-        </View>
+
+          <View style={styles.profileCard}>
+            <View style={styles.headerRow}>
+              {avatarUri ? (
+                <Image
+                  source={{ uri: avatarUri }}
+                  style={[
+                    styles.avatar,
+                    { width: width * 0.24, height: width * 0.24, borderRadius: width * 0.12 }
+                  ]}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.avatarPlaceholder,
+                    { width: width * 0.24, height: width * 0.24, borderRadius: width * 0.12 }
+                  ]}
+                >
+                  <Ionicons name="person" size={width * 0.1} color={COLORS.textFaint} />
+                </View>
+              )}
+
+              <View style={styles.headerTextBox}>
+                <Text style={[styles.name, { fontSize: width * 0.052 }]} numberOfLines={1}>
+                  {profile?.username || "-"}
+                </Text>
+
+                <Text style={[styles.email, { fontSize: width * 0.034 }]} numberOfLines={1}>
+                  {user?.email || "-"}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.chipRow}>
+              <View style={styles.goalChip}>
+                <Ionicons name="flag" size={12} color={COLORS.primary} />
+                <Text style={styles.goalChipText}>{profile?.goal || "-"}</Text>
+              </View>
+
+              <View style={[styles.goalChip, { backgroundColor: COLORS.accentBlueSoft }]}>
+                <Ionicons name="barbell" size={12} color={COLORS.accentBlue} />
+                <Text style={[styles.goalChipText, { color: COLORS.accentBlue }]}>
+                  {LIFESTYLE_LABEL[profile?.lifestyle] || "-"}
+                </Text>
+              </View>
+            </View>
+          </View>
+        </LinearGradient>
 
         {/* ================= General Info ================= */}
         <View style={styles.infoCard}>
+          <View style={styles.infoTitleRow}>
+            <View style={styles.infoTitleIconWrap}>
+              <Ionicons name="person-outline" size={16} color={COLORS.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>ข้อมูลทั่วไป</Text>
+          </View>
           <InfoRow label="น้ำหนักปัจจุบัน" value={`${profile?.current_weight ?? "-"} kg`} />
           <InfoRow label="ส่วนสูง" value={`${profile?.height ?? "-"} cm`} />
           <InfoRow label="เพศ" value={profile?.gender || "-"} />
           <InfoRow label="วันเกิด" value={formatDate(profile?.date_of_birth)} />
           <InfoRow label="อายุ" value={`${age} ปี`} />
-          <InfoRow label="อาหารที่แพ้" value={profile?.food_allergies || "-"} />
+          <InfoRow label="อาหารที่แพ้" value={profile?.food_allergies || "-"} last />
         </View>
 
         {/* ================= Health Calculation ================= */}
         <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>ค่าทางโภชนาการ</Text>
+          <View style={styles.infoTitleRow}>
+            <View style={styles.infoTitleIconWrap}>
+              <Ionicons name="body-outline" size={16} color={COLORS.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>ค่าทางโภชนาการ</Text>
+          </View>
           <InfoRow label="BMI" value={bmi} />
           <InfoRow label="BMR" value={`${bmr} kcal`} />
-          <InfoRow label="TDEE" value={`${tdee} kcal`} />
+          <InfoRow label="TDEE" value={`${tdee} kcal`} last />
         </View>
 
         {/* ================= Daily Macro Target ================= */}
         <View style={styles.infoCard}>
-          <Text style={styles.sectionTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
+          <View style={styles.infoTitleRow}>
+            <View style={styles.infoTitleIconWrap}>
+              <Ionicons name="checkmark-circle-outline" size={16} color={COLORS.primary} />
+            </View>
+            <Text style={styles.sectionTitle}>โภชนาการที่ควรได้รับต่อวัน</Text>
+          </View>
           <InfoRow label="พลังงานรวม" value={`${tdee} kcal`} />
           <InfoRow label="โปรตีน" value={`${proteinTarget} g`} />
           <InfoRow label="คาร์โบไฮเดรต" value={`${carbTarget} g`} />
-          <InfoRow label="ไขมัน" value={`${fatTarget} g`} />
+          <InfoRow label="ไขมัน" value={`${fatTarget} g`} last />
         </View>
 
-        {/* ================= Logout ================= */}
-        <TouchableOpacity style={styles.logoutBtnBottom} onPress={logout}>
-          <Text style={styles.logoutBottomText}>ออกจากระบบ</Text>
-        </TouchableOpacity>
+        {/* ================= Logout / Delete ================= */}
+        <View style={styles.actionsWrap}>
+          <TouchableOpacity style={styles.logoutBtnBottom} onPress={logout} activeOpacity={0.85}>
+            <Ionicons name="log-out-outline" size={18} color={COLORS.primary} />
+            <Text style={styles.logoutBottomText}>ออกจากระบบ</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity style={styles.deleteBtnBottom} onPress={deleteAccount}>
-          <Text style={styles.deleteBottomText}>ลบบัญชี</Text>
-        </TouchableOpacity>
+          <TouchableOpacity style={styles.deleteBtnBottom} onPress={deleteAccount} activeOpacity={0.85}>
+            <Ionicons name="trash-outline" size={18} color={COLORS.danger} />
+            <Text style={styles.deleteBottomText}>ลบบัญชี</Text>
+          </TouchableOpacity>
+        </View>
 
       </ScrollView>
     </SafeAreaView>
@@ -301,9 +367,9 @@ export default function ProfileScreen() {
 }
 
 /* ---------- Row Component ---------- */
-function InfoRow({ label, value }) {
+function InfoRow({ label, value, last }) {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, last && { borderBottomWidth: 0 }]}>
       <Text style={styles.rowLabel}>{label}</Text>
       <Text style={styles.rowValue}>{value}</Text>
     </View>
@@ -311,19 +377,25 @@ function InfoRow({ label, value }) {
 }
 
 /* ===========================================================
-   🎨 UI STYLES (Premium Health App)
+   🎨 UI STYLES (Modern Health App)
    =========================================================== */
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: "#C9FFE2",
+    backgroundColor: COLORS.bg,
   },
 
   safeLoading: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#C9FFE2",
+    backgroundColor: COLORS.bg,
+  },
+  loadingText: {
+    marginTop: 12,
+    color: COLORS.textSub,
+    fontWeight: "600",
+    fontSize: 14,
   },
 
   safeError: {
@@ -331,143 +403,220 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     padding: 30,
-    backgroundColor: "#C9FFE2",
+    backgroundColor: COLORS.bg,
   },
 
-  container: {
-    flex: 1,
-    backgroundColor: "#C9FFE2",
-  },
-
-  loadingBox: {
-    flex: 1,
-    justifyContent: "center",
+  errorIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.dangerSoft,
     alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
   },
 
   errorText: {
-    color: "#d33", fontSize: 18,
-    marginBottom: 16, textAlign: "center",
-    fontWeight: "600"
+    color: COLORS.textMain,
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: "center",
+    fontWeight: "600",
+    lineHeight: 22,
   },
 
   retryBtn: {
-    backgroundColor: "#1B7F5A",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 14,
-    marginBottom: 10
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingVertical: 13,
+    paddingHorizontal: 28,
+    borderRadius: 16,
+    marginBottom: 10,
   },
   retryText: {
-    color: "#fff", fontWeight: "700", fontSize: 16
+    color: "#fff", fontWeight: "700", fontSize: 15, marginLeft: 6,
   },
 
   logoutBtn: {
-    backgroundColor: "#FF5555",
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 14
+    backgroundColor: COLORS.card,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 13,
+    paddingHorizontal: 28,
+    borderRadius: 16,
   },
-  logoutText: { color: "#fff", fontWeight: "700", fontSize: 16 },
+  logoutText: { color: COLORS.textSub, fontWeight: "700", fontSize: 15 },
+
+  /* Header / gradient band */
+  headerBand: {
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 22,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#fff",
+    letterSpacing: 0.2,
+  },
+  editBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+  },
+  editText: {
+    marginLeft: 5,
+    color: COLORS.primaryDark,
+    fontWeight: "700",
+    fontSize: 13,
+  },
 
   profileCard: {
-    backgroundColor: "#FFFFFF", padding: 20,
-    borderRadius: 22, marginBottom: 18,
-    shadowColor: "#000", shadowOpacity: 0.06,
-    shadowRadius: 8, elevation: 3
+    backgroundColor: COLORS.card,
+    padding: 18,
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOpacity: Platform.OS === "ios" ? 0.12 : 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
 
   headerRow: {
-    flexDirection: "row", alignItems: "center"
+    flexDirection: "row",
+    alignItems: "center",
   },
 
   avatarPlaceholder: {
-    backgroundColor: "#E0E0E0",
+    backgroundColor: COLORS.primarySoft,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 100
   },
-
-  avatarPlaceholderText: { color: "#666" },
 
   headerTextBox: { flex: 1, marginLeft: 14 },
 
-  name: { fontWeight: "800", color: "#1A4D3E" },
-  email: { color: "#555", marginTop: 4 },
+  name: { fontWeight: "800", color: COLORS.textMain, letterSpacing: -0.2 },
+  email: { color: COLORS.textSub, marginTop: 3, fontWeight: "500" },
 
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 14,
+  },
   goalChip: {
-    marginTop: 6,
-    backgroundColor: "#E4FFE6",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    color: "#1B7F5A",
-    fontWeight: "700"
-  },
-
-  editBtn: {
-    backgroundColor: "#1B7F5A",
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primarySoft,
     paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 10
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    marginRight: 8,
+    marginBottom: 6,
   },
-  editText: { color: "#fff", fontWeight: "700" },
+  goalChipText: {
+    marginLeft: 5,
+    color: COLORS.primary,
+    fontWeight: "700",
+    fontSize: 12.5,
+  },
 
   infoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 20,
-    elevation: 3
+    backgroundColor: COLORS.card,
+    borderRadius: 24,
+    padding: 18,
+    marginHorizontal: 14,
+    marginTop: 16,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
   },
 
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
+  infoTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 12,
-    color: "#333"
+  },
+  infoTitleIconWrap: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  sectionTitle: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: COLORS.primaryDark,
   },
 
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEE"
+    borderBottomColor: COLORS.border,
   },
 
-  rowLabel: { color: "#333", fontWeight: "600" },
-  rowValue: { fontWeight: "700", color: "#1A4D3E" },
+  rowLabel: { color: COLORS.textSub, fontWeight: "500", fontSize: 14 },
+  rowValue: { fontWeight: "800", color: COLORS.textMain, fontSize: 15 },
+
+  actionsWrap: {
+    marginHorizontal: 14,
+    marginTop: 22,
+  },
 
   logoutBtnBottom: {
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#1B7F5A",
-    marginTop: 22
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.card,
+    paddingVertical: 15,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
   },
 
   logoutBottomText: {
-    color: "#1B7F5A", fontWeight: "800",
+    color: COLORS.primary,
+    fontWeight: "800",
     textAlign: "center",
-    fontSize: 17
+    fontSize: 15.5,
+    marginLeft: 8,
   },
 
   deleteBtnBottom: {
-    backgroundColor: "#B00020",    
-    paddingVertical: 16,
-    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.dangerSoft,
+    paddingVertical: 15,
+    borderRadius: 18,
     marginTop: 12,
     marginBottom: 10,
   },
 
   deleteBottomText: {
-    color: "#fff",
+    color: COLORS.danger,
     fontWeight: "800",
     textAlign: "center",
-    fontSize: 17,
+    fontSize: 15.5,
+    marginLeft: 8,
   },
 
 });
-
