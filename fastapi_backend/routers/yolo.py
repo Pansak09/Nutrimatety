@@ -15,7 +15,9 @@ RESULTS_DIR = Path("results") / "runs"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-model = YOLO("models/best.pt")
+model = YOLO("models/best.pt")  # classification model (yolov8n-cls, 50 classes)
+
+TOP_K = 5
 
 
 def normalize_image(src: Path) -> Path:
@@ -46,18 +48,17 @@ async def predict(file: UploadFile = File(...)):
     with raw_path.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
-    # FIX: normalize image ก่อนส่งเข้า YOLO
+    # normalize image ก่อนส่งเข้า YOLO
     try:
         image_path = normalize_image(raw_path)
     except HTTPException:
         raw_path.unlink(missing_ok=True)
         raise
 
-    # run YOLO
+    # run YOLO classification
     try:
         results = model.predict(
             source=str(image_path),
-            conf=0.25,
             save=True,
             project="results",
             name="runs",
@@ -67,32 +68,30 @@ async def predict(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=f"YOLO failed: {str(e)}")
 
     if not results:
-        return {"success": False, "detections": []}
+        return {"success": False, "predicted_class": None, "top_k": []}
 
     r = results[0]
+    probs = r.probs  # classification ใช้ probs ไม่ใช่ boxes
 
-    boxes = []
-    for b in r.boxes:
-        cls_id = int(b.cls[0])
-        conf = float(b.conf[0])
-        x1, y1, x2, y2 = map(float, b.xyxy[0])
+    top1_idx = int(probs.top1)
+    top1_name = model.names[top1_idx]
+    top1_conf = float(probs.top1conf)
 
-        label = model.names[cls_id] if cls_id in model.names else f"class_{cls_id}"
-
-        boxes.append({
-            "cls": cls_id,
-            "label": label,
-            "conf": conf,
-            "box": [x1, y1, x2, y2],
-        })
+    top5_idx = probs.top5[:TOP_K]
+    top5_conf = probs.top5conf.cpu().numpy()[:TOP_K]
+    top_k = [
+        {"cls": int(idx), "label": model.names[int(idx)], "conf": round(float(conf), 4)}
+        for idx, conf in zip(top5_idx, top5_conf)
+    ]
 
     saved_image = Path(r.save_dir) / image_path.name
     rel_path = saved_image.relative_to("results")
 
     return JSONResponse({
         "success": True,
-        "name": boxes[0]["label"] if boxes else "",
-        "detections": boxes,
+        "name": top1_name,
+        "confidence": round(top1_conf, 4),
+        "detections": top_k,   # ← ใช้ชื่อเดิม แค่เนื้อหาข้างในเปลี่ยนเป็น top-k แทน box
         "image_url": f"/results/{rel_path.as_posix()}",
         "uploaded_url": f"/uploads/{image_path.name}",
         "original_width": r.orig_shape[1],

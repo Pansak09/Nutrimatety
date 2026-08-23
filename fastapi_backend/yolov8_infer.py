@@ -2,23 +2,24 @@
 from ultralytics import YOLO
 from pathlib import Path
 
-CLASS_MAP = [
-    "Fried Rice",
-    "Pad Thai",
-    "Papaya Salad",
-    "Omelet Rice",
-    "Green Curry",
-    "Tom Yum"
-]
-
 _model = None
 
-def detect_objects(image_path: str):
+
+def _get_model():
     global _model
     if _model is None:
         _model = YOLO("models/best.pt")
+    return _model
 
-    results = _model.predict(
+
+def classify_image(image_path: str, top_k: int = 5) -> dict:
+    """
+    รัน inference บนโมเดล YOLOv8 classification (yolov8n-cls, 50 classes)
+    คืนค่า top-1 prediction พร้อม confidence และ top-k อันดับรอง
+    """
+    model = _get_model()
+
+    results = model.predict(
         source=image_path,
         save=True,
         project="results",
@@ -27,19 +28,31 @@ def detect_objects(image_path: str):
     )
 
     r = results[0]
+    probs = r.probs                 # Probs object เฉพาะของ classification task
+    names = model.names             # ชื่อ class จริงที่ฝังอยู่ในตัวโมเดล (50 classes)
 
-    detected_classes = []
-    for b in r.boxes:
-        cls_id = int(b.cls[0])
-        conf = float(b.conf[0])
-        name = CLASS_MAP[cls_id] if cls_id < len(CLASS_MAP) else f"class_{cls_id}"
-        detected_classes.append(name)
+    top1_idx = int(probs.top1)
+    top1_name = names[top1_idx]
+    top1_conf = float(probs.top1conf)
+
+    top5_idx = probs.top5[:top_k]
+    top5_conf = probs.top5conf.cpu().numpy()[:top_k]
+    top_k_results = [
+        {"class": names[int(idx)], "confidence": round(float(conf), 4)}
+        for idx, conf in zip(top5_idx, top5_conf)
+    ]
 
     # ไฟล์ที่ YOLO เซฟไว้หลัง annotate
     saved_path = Path(r.save_dir) / Path(image_path).name
 
     return {
         "filename": saved_path.name,
-        "detected_classes": detected_classes,
-        "confidence": [float(b.conf[0]) for b in r.boxes],
+        "predicted_class": top1_name,
+        "confidence": round(top1_conf, 4),
+        "top_k": top_k_results,
     }
+
+
+if __name__ == "__main__":
+    result = classify_image("test_image.jpg")
+    print(result)
