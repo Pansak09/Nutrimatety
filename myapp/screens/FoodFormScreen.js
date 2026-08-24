@@ -3,10 +3,34 @@ import * as ImageManipulator from "expo-image-manipulator";
 import React, { useState, useEffect } from "react";
 import {
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
-  Alert, KeyboardAvoidingView, ScrollView
+  Alert, KeyboardAvoidingView, ScrollView, Platform
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { API, API_BASE } from "../api";
 
+// ===================== PALETTE (matches other screens) =====================
+const COLORS = {
+  bg: "#F6FAF8",
+  card: "#FFFFFF",
+  primaryDark: "#0F4C3A",
+  primary: "#1B8A5A",
+  primarySoft: "#E7F6EC",
+  mint: "#2FBF87",
+  gradientStart: "#1FAF7A",
+  gradientEnd: "#0F4C3A",
+  accentEnergy: "#FF7A59",
+  accentProtein: "#3A7BFF",
+  accentCarb: "#F5B942",
+  accentFat: "#FF5FA2",
+  textMain: "#0F2E27",
+  textSub: "#6C8079",
+  textFaint: "#9FB1AA",
+  border: "#EAF2ED",
+  danger: "#B00020",
+  dangerSoft: "#FDECEC",
+};
 
 // ✨ เพิ่มรายการ Mapping ชื่ออาหาร → ชื่อไทย
 const nameMap = {
@@ -42,6 +66,7 @@ export default function FoodFormScreen({ navigation, route }) {
 
   const mealTime = route.params?.meal || "เช้า";
   const [saving, setSaving] = useState(false);
+  const [searching, setSearching] = useState(false);
 
   // ---------------------- PRESET (จาก AI + DB) ----------------------
   useEffect(() => {
@@ -64,6 +89,7 @@ export default function FoodFormScreen({ navigation, route }) {
     if (!q) return Alert.alert("กรุณากรอกชื่ออาหาร");
 
     try {
+      setSearching(true);
       const res = await API.get(`/menu?search=${encodeURIComponent(q)}`);
 
       if (!res.data?.length) {
@@ -78,13 +104,15 @@ export default function FoodFormScreen({ navigation, route }) {
       setKcal(item.calories?.toString() || "");
     } catch (err) {
       Alert.alert("เกิดข้อผิดพลาด", err.message);
+    } finally {
+      setSearching(false);
     }
   };
 
   // ---------------------- UPLOAD IMAGE ----------------------
   const uploadImage = async (localUri) => {
     if (!localUri || !localUri.startsWith("file://")) return null;
-    
+
     // ✅ convert ทุกครั้ง
     const converted = await ImageManipulator.manipulateAsync(
       localUri,
@@ -94,24 +122,24 @@ export default function FoodFormScreen({ navigation, route }) {
         format: ImageManipulator.SaveFormat.JPEG,
       }
     );
-  
+
     const formData = new FormData();
     formData.append("file", {
       uri: converted.uri,
       name: "photo.jpg",
       type: "image/jpeg",
     });
-  
+
     const res = await fetch(`${API_BASE}/files/upload`, {
       method: "POST",
       body: formData,
     });
-  
+
     if (!res.ok) {
       const err = await res.text();
       throw new Error(err);
     }
-  
+
     const data = await res.json();
     return data.url;
   };
@@ -161,70 +189,154 @@ export default function FoodFormScreen({ navigation, route }) {
 
   // ---------------------- UI ----------------------
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
-      <View style={s.container}>
-        <ScrollView contentContainerStyle={s.content}>
-          
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <SafeAreaView style={s.container} edges={["top"]}>
+
+        {/* Header (gradient band) */}
+        <LinearGradient
+          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.header}
+        >
+          <TouchableOpacity
+            style={s.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <View>
+            <Text style={s.headerTitle}>เพิ่มรายการอาหาร</Text>
+            <Text style={s.headerSub}>มื้อ{mealTime}</Text>
+          </View>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
+
+        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+
           {/* IMAGE */}
           <View style={s.imageCard}>
             {fullImageUri ? (
               <Image source={{ uri: fullImageUri }} style={s.image} />
             ) : (
-              <View style={[s.image, { backgroundColor: "#ccc" }]} />
+              <View style={[s.image, s.noImage]}>
+                <Ionicons name="fast-food-outline" size={34} color={COLORS.textFaint} />
+                <Text style={s.noImageText}>ไม่มีภาพอาหาร</Text>
+              </View>
             )}
           </View>
 
-          {/* NAME */}
-          <Text style={s.label}>ชื่ออาหาร</Text>
-          <View style={s.row}>
-            <TextInput
-              style={[s.input, { flex: 1 }]}
-              value={name}
-              onChangeText={setName}
-              placeholder="เช่น ข้าวผัด"
-            />
-            <TouchableOpacity onPress={searchNutrition}>
-              <Text style={s.searchBtn}>ค้นหา</Text>
-            </TouchableOpacity>
+          {/* Form card */}
+          <View style={s.formCard}>
+            {/* NAME */}
+            <Text style={s.label}>ชื่ออาหาร</Text>
+            <View style={s.row}>
+              <TextInput
+                style={[s.input, { flex: 1 }]}
+                value={name}
+                onChangeText={setName}
+                placeholder="เช่น ข้าวผัด"
+                placeholderTextColor={COLORS.textFaint}
+              />
+              <TouchableOpacity
+                style={[s.searchBtn, searching && { opacity: 0.7 }]}
+                onPress={searchNutrition}
+                disabled={searching}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="search" size={16} color="#fff" />
+                <Text style={s.searchBtnText}>{searching ? "..." : "ค้นหา"}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* MACROS */}
+            <View style={s.macroGrid}>
+              <Field
+                label="โปรตีน (g)"
+                value={protein}
+                setter={setProtein}
+                numeric
+                icon="barbell-outline"
+                color={COLORS.accentProtein}
+                half
+              />
+              <Field
+                label="ไขมัน (g)"
+                value={fat}
+                setter={setFat}
+                numeric
+                icon="water-outline"
+                color={COLORS.accentFat}
+                half
+              />
+              <Field
+                label="คาร์โบไฮเดรต (g)"
+                value={carb}
+                setter={setCarb}
+                numeric
+                icon="restaurant-outline"
+                color={COLORS.accentCarb}
+                half
+              />
+              <Field
+                label="แคลอรี่ (kcal)"
+                value={kcal}
+                setter={setKcal}
+                numeric
+                icon="flame-outline"
+                color={COLORS.accentEnergy}
+                half
+              />
+            </View>
           </View>
 
-          {/* MACROS */}
-          <Field label="โปรตีน (g)" value={protein} setter={setProtein} numeric />
-          <Field label="ไขมัน (g)" value={fat} setter={setFat} numeric />
-          <Field label="คาร์โบไฮเดรต (g)" value={carb} setter={setCarb} numeric />
-          <Field label="แคลอรี่ (kcal)" value={kcal} setter={setKcal} numeric />
-
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         {/* BUTTONS */}
         <View style={s.bottomBar}>
-          <TouchableOpacity
-            style={[s.btnGreen, saving && { opacity: 0.5 }]}
-            onPress={save}
-            disabled={saving}
-          >
-            <Text style={s.btnText}>บันทึก</Text>
+          <TouchableOpacity style={s.btnCancel} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <Text style={s.btnCancelText}>ยกเลิก</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={s.btnRed} onPress={() => navigation.goBack()}>
-            <Text style={s.btnText}>ยกเลิก</Text>
+          <TouchableOpacity
+            style={[s.btnSave, saving && { opacity: 0.6 }]}
+            onPress={save}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={s.btnSaveGradient}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={s.btnSaveText}>{saving ? "กำลังบันทึก..." : "บันทึก"}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 }
 
 // ---------------------- FIELD COMPONENT ----------------------
-function Field({ label, value, setter, numeric }) {
+function Field({ label, value, setter, numeric, icon, color, half }) {
   return (
-    <View style={{ marginBottom: 14 }}>
-      <Text style={s.label}>{label}</Text>
+    <View style={[{ marginBottom: 14 }, half && { width: "48%" }]}>
+      <View style={s.fieldLabelRow}>
+        {icon && <Ionicons name={icon} size={13} color={color || COLORS.primary} />}
+        <Text style={[s.label, { marginLeft: icon ? 5 : 0, marginBottom: 0 }]}>{label}</Text>
+      </View>
       <TextInput
         value={value}
         onChangeText={setter}
         keyboardType={numeric ? "numeric" : "default"}
         style={s.input}
+        placeholder="0"
+        placeholderTextColor={COLORS.textFaint}
       />
     </View>
   );
@@ -232,66 +344,171 @@ function Field({ label, value, setter, numeric }) {
 
 // ---------------------- STYLES ----------------------
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#C9FFE0" },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  content: { paddingHorizontal: 16, paddingTop: 16 },
+
+  /* Header */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#fff",
+    textAlign: "center",
+  },
+  headerSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    textAlign: "center",
+    marginTop: 2,
+  },
 
   imageCard: {
     width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 16,
+    backgroundColor: COLORS.card,
+    borderRadius: 22,
     overflow: "hidden",
-    marginTop: 30,
-    marginBottom: 20,
-    elevation: 3,
+    marginBottom: 16,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: Platform.OS === "android" ? 3 : 0,
   },
 
   image: {
     width: "100%",
-    height: 240,
+    height: 220,
     resizeMode: "cover",
   },
 
-  label: {
-    fontSize: 15,
+  noImage: {
+    backgroundColor: COLORS.primarySoft,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noImageText: {
+    marginTop: 8,
+    color: COLORS.textFaint,
     fontWeight: "600",
-    color: "#333",
+    fontSize: 13,
+  },
+
+  formCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 22,
+    padding: 18,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+
+  label: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: COLORS.textMain,
+    marginBottom: 6,
+  },
+
+  fieldLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 6,
   },
 
   row: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   searchBtn: {
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 10,
-    backgroundColor: "#2ECC71",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
+    backgroundColor: COLORS.primary,
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+  },
+  searchBtnText: {
+    marginLeft: 5,
     color: "#fff",
     fontWeight: "700",
+    fontSize: 13.5,
   },
 
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 12,
     paddingHorizontal: 14,
     height: 46,
     fontSize: 15,
-    elevation: 1,
+    color: COLORS.textMain,
+  },
+
+  macroGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
 
   bottomBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
-    paddingBottom: 30,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 18 : 16,
+    backgroundColor: COLORS.bg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
 
-  btnGreen: { backgroundColor: "#2ECC71", padding: 12, borderRadius: 14 },
-  btnRed: { backgroundColor: "#E74C3C", padding: 12, borderRadius: 14 },
+  btnCancel: {
+    flex: 1,
+    backgroundColor: COLORS.dangerSoft,
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnCancelText: { color: COLORS.danger, fontSize: 15.5, fontWeight: "800" },
 
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  btnSave: {
+    flex: 1.4,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
+  },
+  btnSaveGradient: {
+    flexDirection: "row",
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnSaveText: { color: "#fff", fontSize: 15.5, fontWeight: "800", marginLeft: 6 },
 });

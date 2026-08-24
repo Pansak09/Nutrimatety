@@ -1,4 +1,3 @@
-// EditProfileScreen.js
 import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
@@ -14,30 +13,32 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-
 import { API } from "../api";
 import { uploadAvatar } from "../utils/uploadAvatar";
-import { DatePicker } from "../components/date-picker";
+import { DatePicker } from '../components/date-picker';
 
-// ===================== PALETTE (Matching HomeScreen) =====================
+// ===================== PALETTE (matches Home / Profile) =====================
 const COLORS = {
-  bg: "#F4FBF6",
+  bg: "#F6FAF8",
   card: "#FFFFFF",
   primaryDark: "#0F4C3A",
   primary: "#1B8A5A",
-  primarySoft: "#E3F6EA",
+  primarySoft: "#E7F6EC",
   mint: "#2FBF87",
-  accentEnergy: "#FF7A59",
-  accentProtein: "#3A7BFF",
-  accentCarb: "#F5B942",
-  accentFat: "#FF5FA2",
+  gradientStart: "#1FAF7A",
+  gradientEnd: "#0F4C3A",
+  accentPink: "#D81B60",
+  accentPinkSoft: "#FDE8F0",
+  accentGoal: "#FF9F43",
+  accentGoalSoft: "#FFF1E0",
   textMain: "#0F2E27",
-  textSub: "#5B7369",
-  border: "#E3EEE7",
-  overlay: "rgba(11,38,30,0.55)",
+  textSub: "#6C8079",
+  textFaint: "#9FB1AA",
+  border: "#EAF2ED",
 };
 
 const GOAL_OPTIONS = ["รักษาหุ่น", "ลดน้ำหนัก", "เพิ่มน้ำหนัก"];
@@ -48,6 +49,8 @@ const LIFESTYLE_OPTIONS = [
   { key: "active", label: "ออกกำลังกายหนัก" },
   { key: "athlete", label: "นักกีฬา / ฝึกหนักมาก" },
 ];
+
+
 
 const normalizeGender = (g) => {
   const s = (g || "").toLowerCase();
@@ -71,7 +74,9 @@ export default function EditProfileScreen({ navigation }) {
 
   const [username, setUsername] = useState("");
   const [gender, setGender] = useState(null);
+
   const [dob, setDob] = useState(new Date(2000, 0, 1));
+  const [showIOSPicker, setShowIOSPicker] = useState(false);
 
   const [height, setHeight] = useState("");
   const [currentWeight, setCurrentWeight] = useState("");
@@ -81,6 +86,7 @@ export default function EditProfileScreen({ navigation }) {
   const [foodAllergies, setFoodAllergies] = useState("");
   const [goal, setGoal] = useState(null);
   const [lifestyle, setLifestyle] = useState("light");
+
 
   const [avatarUri, setAvatarUri] = useState(null);
 
@@ -136,7 +142,10 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
-  /* บันทึกโปรไฟล์ */
+
+
+
+  /*  บันทึกโปรไฟล์ */
   const onSave = async () => {
     if (!username.trim()) return Alert.alert("กรุณากรอก Username");
     if (!gender) return Alert.alert("กรุณาเลือกเพศ");
@@ -179,244 +188,256 @@ export default function EditProfileScreen({ navigation }) {
     }
   };
 
-  /* Loading State */
+  /* Loading */
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerBox]}>
+      <SafeAreaView style={[styles.container, styles.centerBox]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
         <Text style={styles.loadingText}>กำลังโหลดข้อมูลโปรไฟล์...</Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
   const shownAvatar = buildURL(avatarUri);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backBtn}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="arrow-back" size={22} color={COLORS.primaryDark} />
-            </TouchableOpacity>
-            <View style={{ flex: 1, alignItems: "center" }}>
-              <Text style={styles.headerTitle}>แก้ไขโปรไฟล์</Text>
-            </View>
-            <View style={{ width: 40 }} />
-          </View>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <SafeAreaView style={styles.container} edges={["top"]}>
 
-          {/* Form Content */}
-          <ScrollView contentContainerStyle={styles.scrollContent}>
-            {/* Avatar Selection */}
-            <View style={styles.avatarWrap}>
+        {/* Header (gradient band) */}
+        <LinearGradient
+          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-back" size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>แก้ไขโปรไฟล์</Text>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
+
+        {/* Scroll */}
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+
+          {/* Avatar */}
+          <View style={styles.avatarWrap}>
+            <View style={styles.avatarShadowWrap}>
               {shownAvatar ? (
                 <Image source={{ uri: shownAvatar }} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Ionicons
-                    name="person-circle-outline"
-                    size={72}
-                    color={COLORS.textSub}
-                  />
+                  <Ionicons name="person" size={54} color={COLORS.textFaint} />
                 </View>
               )}
-
-              <TouchableOpacity
-                style={styles.changeBtn}
-                onPress={pickImage}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="image-outline" size={16} color={COLORS.primaryDark} />
-                <Text style={styles.changeBtnText}>เปลี่ยนรูปโปรไฟล์</Text>
-              </TouchableOpacity>
             </View>
 
-            {/* Input Form Card */}
-            <View style={styles.card}>
-              {/* Username */}
-              <Text style={styles.label}>Username</Text>
-              <TextInput
-                style={styles.input}
-                value={username}
-                onChangeText={setUsername}
-                placeholder="เช่น pansak09"
-                placeholderTextColor="#99A9A3"
-              />
-
-              {/* Gender */}
-              <Text style={styles.label}>เพศ</Text>
-              <View style={styles.genderRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.genderBtn,
-                    gender === "male" && styles.genderActive,
-                  ]}
-                  onPress={() => setGender("male")}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="male"
-                    size={18}
-                    color={gender === "male" ? "#FFFFFF" : COLORS.primary}
-                  />
-                  <Text
-                    style={[
-                      styles.genderText,
-                      gender === "male" && styles.genderTextActive,
-                    ]}
-                  >
-                    ชาย
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.genderBtn,
-                    gender === "female" && styles.genderActive,
-                  ]}
-                  onPress={() => setGender("female")}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons
-                    name="female"
-                    size={18}
-                    color={gender === "female" ? "#FFFFFF" : COLORS.accentFat}
-                  />
-                  <Text
-                    style={[
-                      styles.genderText,
-                      gender === "female" && styles.genderTextActive,
-                    ]}
-                  >
-                    หญิง
-                  </Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Health Goal */}
-              <Text style={styles.label}>เป้าหมายสุขภาพ</Text>
-              <View style={styles.goalRow}>
-                {GOAL_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt}
-                    style={[
-                      styles.goalOption,
-                      goal === opt && styles.goalOptionActive,
-                    ]}
-                    onPress={() => setGoal(opt)}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.goalText,
-                        goal === opt && styles.goalTextActive,
-                      ]}
-                    >
-                      {opt}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Lifestyle */}
-              <Text style={styles.label}>ระดับกิจกรรม (Lifestyle)</Text>
-              <View style={styles.goalRow}>
-                {LIFESTYLE_OPTIONS.map((opt) => (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      styles.goalOption,
-                      lifestyle === opt.key && styles.goalOptionActive,
-                    ]}
-                    onPress={() => setLifestyle(opt.key)}
-                    activeOpacity={0.8}
-                  >
-                    <Text
-                      style={[
-                        styles.goalText,
-                        lifestyle === opt.key && styles.goalTextActive,
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {/* Date of Birth */}
-              <DatePicker label="วันเกิด" value={dob} onChange={setDob} />
-
-              {/* Height */}
-              <Text style={styles.label}>ส่วนสูง (cm)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={height}
-                onChangeText={setHeight}
-                placeholder="เช่น 170"
-                placeholderTextColor="#99A9A3"
-              />
-
-              {/* Current Weight */}
-              <Text style={styles.label}>น้ำหนักปัจจุบัน (kg)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={currentWeight}
-                onChangeText={setCurrentWeight}
-                placeholder="เช่น 70"
-                placeholderTextColor="#99A9A3"
-              />
-
-              {/* Target Calories */}
-              <Text style={styles.label}>เป้าหมายพลังงานต่อวัน (kcal)</Text>
-              <TextInput
-                style={styles.input}
-                keyboardType="numeric"
-                value={targetCalories}
-                onChangeText={setTargetCalories}
-                placeholder="เช่น 2000"
-                placeholderTextColor="#99A9A3"
-              />
-
-              {/* Food Allergies */}
-              <Text style={styles.label}>อาหารที่แพ้</Text>
-              <TextInput
-                style={styles.input}
-                value={foodAllergies}
-                onChangeText={setFoodAllergies}
-                placeholder="เช่น กุ้ง, ถั่ว, นมวัว"
-                placeholderTextColor="#99A9A3"
-              />
-            </View>
-          </ScrollView>
-
-          {/* Fixed Save Button */}
-          <View style={styles.footer}>
-            <TouchableOpacity
-              style={[styles.button, saving && { opacity: 0.7 }]}
-              onPress={onSave}
-              disabled={saving}
-              activeOpacity={0.85}
-            >
-              {saving ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.buttonText}>บันทึกการเปลี่ยนแปลง</Text>
-              )}
+            <TouchableOpacity style={styles.changeBtn} onPress={pickImage} activeOpacity={0.85}>
+              <Ionicons name="camera-outline" size={16} color={COLORS.primaryDark} />
+              <Text style={styles.changeBtnText}>เปลี่ยนรูปโปรไฟล์</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Card: บัญชี */}
+          <View style={styles.card}>
+            <SectionLabel icon="person-outline" text="ข้อมูลบัญชี" />
+
+            <Text style={styles.label}>Username</Text>
+            <TextInput
+              style={styles.input}
+              value={username}
+              onChangeText={setUsername}
+              placeholder="เช่น pansak09"
+              placeholderTextColor={COLORS.textFaint}
+            />
+
+            <Text style={styles.label}>เพศ</Text>
+            <View style={styles.genderRow}>
+
+              <TouchableOpacity
+                style={[styles.genderBtn, gender === "male" && styles.genderActiveMale]}
+                onPress={() => setGender("male")}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name="male"
+                  size={17}
+                  color={gender === "male" ? "#fff" : COLORS.primary}
+                />
+                <Text style={[styles.genderText, gender === "male" && styles.genderTextActive]}>
+                  ชาย
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.genderBtn, gender === "female" && styles.genderActiveFemale]}
+                onPress={() => setGender("female")}
+                activeOpacity={0.85}
+              >
+                <Ionicons
+                  name="female"
+                  size={17}
+                  color={gender === "female" ? "#fff" : COLORS.accentPink}
+                />
+                <Text style={[styles.genderText, gender === "female" && styles.genderTextActive]}>
+                  หญิง
+                </Text>
+              </TouchableOpacity>
+
+            </View>
+
+            <DatePicker
+              label="วันเกิด"
+              value={dob}
+              onChange={setDob}
+            />
+          </View>
+
+          {/* Card: เป้าหมายสุขภาพ */}
+          <View style={styles.card}>
+            <SectionLabel icon="flag-outline" text="เป้าหมาย & ไลฟ์สไตล์" />
+
+            <Text style={styles.label}>เป้าหมายสุขภาพ</Text>
+            <View style={styles.goalRow}>
+              {GOAL_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[styles.goalOption, goal === opt && styles.goalOptionActive]}
+                  onPress={() => setGoal(opt)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.goalText, goal === opt && styles.goalTextActive]}>
+                    {opt}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={styles.label}>ระดับกิจกรรม (Lifestyle)</Text>
+            <View style={styles.goalRow}>
+              {LIFESTYLE_OPTIONS.map((opt) => (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[
+                    styles.goalOption,
+                    lifestyle === opt.key && styles.goalOptionActive,
+                  ]}
+                  onPress={() => setLifestyle(opt.key)}
+                  activeOpacity={0.85}
+                >
+                  <Text
+                    style={[
+                      styles.goalText,
+                      lifestyle === opt.key && styles.goalTextActive,
+                    ]}
+                  >
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Card: ร่างกาย & โภชนาการ */}
+          <View style={styles.card}>
+            <SectionLabel icon="body-outline" text="ร่างกาย & โภชนาการ" />
+
+            <Text style={styles.label}>ส่วนสูง (cm)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={height}
+              onChangeText={setHeight}
+              placeholder="เช่น 170"
+              placeholderTextColor={COLORS.textFaint}
+            />
+
+            <Text style={styles.label}>น้ำหนักปัจจุบัน (kg)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={currentWeight}
+              onChangeText={setCurrentWeight}
+              placeholder="เช่น 70"
+              placeholderTextColor={COLORS.textFaint}
+            />
+
+            <Text style={styles.label}>เป้าหมายพลังงานต่อวัน (kcal)</Text>
+            <TextInput
+              style={styles.input}
+              keyboardType="numeric"
+              value={targetCalories}
+              onChangeText={setTargetCalories}
+              placeholder="เช่น 2000"
+              placeholderTextColor={COLORS.textFaint}
+            />
+
+            <Text style={styles.label}>อาหารที่แพ้</Text>
+            <TextInput
+              style={styles.input}
+              value={foodAllergies}
+              onChangeText={setFoodAllergies}
+              placeholder="เช่น กุ้ง, ถั่ว, นมวัว"
+              placeholderTextColor={COLORS.textFaint}
+            />
+          </View>
+
+          {/* spacer so content clears the floating footer button */}
+          <View style={{ height: 90 }} />
+
+        </ScrollView>
+
+        {/* Footer Button */}
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={onSave}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={[styles.buttonGradient, saving && { opacity: 0.75 }]}
+            >
+              {saving ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={19} color="#fff" />
+                  <Text style={styles.buttonText}>บันทึกการเปลี่ยนแปลง</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+      </SafeAreaView>
+    </KeyboardAvoidingView>
+  );
+}
+
+/* ---------------------- Section Label ---------------------- */
+function SectionLabel({ icon, text }) {
+  return (
+    <View style={styles.sectionLabelRow}>
+      <View style={styles.sectionLabelIconWrap}>
+        <Ionicons name={icon} size={15} color={COLORS.primary} />
+      </View>
+      <Text style={styles.sectionLabelText}>{text}</Text>
+    </View>
   );
 }
 
@@ -430,49 +451,60 @@ const styles = StyleSheet.create({
 
   loadingText: {
     marginTop: 12,
-    color: COLORS.primaryDark,
+    color: COLORS.textSub,
     fontWeight: "600",
   },
 
+  /* Header */
   header: {
+    paddingTop: 8,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingBottom: 18,
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.primarySoft,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
   },
-
   headerTitle: {
     fontSize: 18,
     fontWeight: "800",
-    color: COLORS.primaryDark,
+    color: "#fff",
+    letterSpacing: 0.2,
   },
 
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 110,
+    paddingTop: 18,
   },
 
   avatarWrap: {
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 18,
   },
-
+  avatarShadowWrap: {
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.15,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+    borderRadius: 60,
+  },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 108,
+    height: 108,
+    borderRadius: 54,
+    borderWidth: 4,
+    borderColor: COLORS.card,
   },
-
   avatarPlaceholder: {
     backgroundColor: COLORS.primarySoft,
     justifyContent: "center",
@@ -480,13 +512,13 @@ const styles = StyleSheet.create({
   },
 
   changeBtn: {
-    marginTop: 10,
+    marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
     paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: COLORS.primarySoft,
-    borderRadius: 20,
+    borderRadius: 999,
   },
 
   changeBtnText: {
@@ -500,54 +532,81 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     borderRadius: 22,
     padding: 18,
+    marginBottom: 16,
     shadowColor: "#0F4C3A",
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
     elevation: 3,
   },
 
+  sectionLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  sectionLabelIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  sectionLabelText: {
+    fontSize: 14.5,
+    fontWeight: "800",
+    color: COLORS.primaryDark,
+  },
+
   label: {
-    marginTop: 14,
+    marginTop: 12,
     marginBottom: 6,
     fontWeight: "700",
+    fontSize: 13.5,
     color: COLORS.textMain,
-    fontSize: 14,
   },
 
   input: {
     borderWidth: 1,
     backgroundColor: COLORS.bg,
     borderColor: COLORS.border,
-    borderRadius: 12,
+    borderRadius: 13,
     paddingHorizontal: 14,
-    height: 46,
-    fontSize: 15,
+    marginTop: 4,
+    height: 48,
     color: COLORS.textMain,
+    fontSize: 15,
   },
 
   genderRow: {
     flexDirection: "row",
     gap: 10,
+    marginTop: 4,
   },
 
   genderBtn: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 11,
     paddingHorizontal: 8,
-    borderRadius: 14,
+    borderRadius: 999,
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.bg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
 
-  genderActive: {
+  genderActiveMale: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
+  },
+  genderActiveFemale: {
+    backgroundColor: COLORS.accentPink,
+    borderColor: COLORS.accentPink,
   },
 
   genderText: {
@@ -564,20 +623,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
+    marginTop: 4,
   },
 
   goalOption: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 14,
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: COLORS.bg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    backgroundColor: COLORS.bg,
   },
 
   goalOptionActive: {
-    backgroundColor: COLORS.accentCarb,
-    borderColor: COLORS.accentCarb,
+    backgroundColor: COLORS.accentGoal,
+    borderColor: COLORS.accentGoal,
   },
 
   goalText: {
@@ -588,31 +648,37 @@ const styles = StyleSheet.create({
 
   goalTextActive: {
     color: "#FFFFFF",
-    fontWeight: "700",
+    fontWeight: "800",
   },
 
   footer: {
     position: "absolute",
     left: 16,
     right: 16,
-    bottom: 16,
+    bottom: 18,
   },
 
   button: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: 14,
-    borderRadius: 16,
-    alignItems: "center",
+    borderRadius: 18,
+    overflow: "hidden",
     shadowColor: "#0F4C3A",
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowOpacity: 0.25,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
+  },
+
+  buttonGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 16,
   },
 
   buttonText: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+    marginLeft: 8,
   },
 });

@@ -5,9 +5,33 @@ import {
   Alert, KeyboardAvoidingView, Platform, ScrollView, Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { API, API_BASE } from "../api";
 import * as ImageManipulator from "expo-image-manipulator";
+
+// ===================== PALETTE (matches other screens) =====================
+const COLORS = {
+  bg: "#F6FAF8",
+  card: "#FFFFFF",
+  primaryDark: "#0F4C3A",
+  primary: "#1B8A5A",
+  primarySoft: "#E7F6EC",
+  mint: "#2FBF87",
+  gradientStart: "#1FAF7A",
+  gradientEnd: "#0F4C3A",
+  accentEnergy: "#FF7A59",
+  accentProtein: "#3A7BFF",
+  accentCarb: "#F5B942",
+  accentFat: "#FF5FA2",
+  textMain: "#0F2E27",
+  textSub: "#6C8079",
+  textFaint: "#9FB1AA",
+  border: "#EAF2ED",
+  danger: "#B00020",
+  dangerSoft: "#FDECEC",
+};
 
 export default function FoodFormScreen1({ navigation, route }) {
   const { imageUrl, meal } = route.params || {};
@@ -66,9 +90,9 @@ export default function FoodFormScreen1({ navigation, route }) {
     if (!localImage || !localImage.startsWith("file://")) {
       return imageUrl;
     }
-  
+
     console.log(">>> ORIGINAL IMAGE:", localImage);
-  
+
     // ✅ แปลง HEIC / PNG → JPEG จริง
     const converted = await ImageManipulator.manipulateAsync(
       localImage,
@@ -78,38 +102,40 @@ export default function FoodFormScreen1({ navigation, route }) {
         format: ImageManipulator.SaveFormat.JPEG,
       }
     );
-  
+
     console.log(">>> CONVERTED IMAGE:", converted.uri);
-  
+
     const formData = new FormData();
     formData.append("file", {
       uri: converted.uri,
       name: "photo.jpg",
       type: "image/jpeg",
     });
-  
+
     const res = await fetch(`${API_BASE}/files/upload`, {
       method: "POST",
       body: formData,
     });
-  
+
     if (!res.ok) {
       const err = await res.text();
       console.log("UPLOAD ERROR:", err);
       throw new Error("Upload failed");
     }
-  
+
     const data = await res.json();
     console.log(">>> UPLOAD SUCCESS:", data);
-  
+
     return data.url; // /uploads/xxx.jpg
   };
 
   // ---------------- Fetch nutrition ----------------
+  const [searching, setSearching] = useState(false);
   const fetchNutrition = async (foodName) => {
     if (!foodName.trim()) return;
 
     try {
+      setSearching(true);
       const res = await fetch(`${API_BASE}/menu?search=${encodeURIComponent(foodName)}`);
       const data = await res.json();
 
@@ -125,6 +151,8 @@ export default function FoodFormScreen1({ navigation, route }) {
       setKcal(f.calories?.toString() || "");
     } catch (err) {
       Alert.alert("ผิดพลาด", err.message);
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -176,156 +204,348 @@ export default function FoodFormScreen1({ navigation, route }) {
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.content}>
+      <SafeAreaView style={styles.container} edges={["top"]}>
+
+        {/* Header (gradient band) */}
+        <LinearGradient
+          colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="arrow-back" size={20} color="#fff" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>เพิ่มรายการอาหาร</Text>
+            <Text style={styles.headerSub}>มื้อ{meal || "เช้า"}</Text>
+          </View>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
+
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+
+          {/* IMAGE */}
           <View style={styles.imageCard}>
             {displayUri ? (
-              <Image source={{ uri: displayUri }} style={[styles.image, imageSize]} />
+              <TouchableOpacity onPress={pickImage} activeOpacity={0.9}>
+                <Image source={{ uri: displayUri }} style={[styles.image, imageSize]} />
+                <View style={styles.retakeBadge}>
+                  <Ionicons name="camera" size={14} color="#fff" />
+                  <Text style={styles.retakeBadgeText}>เปลี่ยนรูป</Text>
+                </View>
+              </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={styles.uploadBox} onPress={pickImage}>
-                <Ionicons name="cloud-upload-outline" size={40} color="#888" />
-                <Text style={{ color: "#888", marginTop: 6 }}>เลือกรูปภาพ</Text>
+              <TouchableOpacity style={styles.uploadBox} onPress={pickImage} activeOpacity={0.85}>
+                <View style={styles.uploadIconWrap}>
+                  <Ionicons name="cloud-upload-outline" size={30} color={COLORS.primary} />
+                </View>
+                <Text style={styles.uploadText}>เลือกรูปภาพ</Text>
+                <Text style={styles.uploadSubtext}>แตะเพื่อเลือกจากคลังภาพ</Text>
               </TouchableOpacity>
             )}
           </View>
 
-          <Text style={styles.label}>ชื่ออาหาร</Text>
-          <View style={styles.searchRow}>
-            <TextInput
-              placeholder="เช่น ข้าวผัด"
-              style={[styles.input, { flex: 1 }]}
-              value={name}
-              onChangeText={setName}
-              returnKeyType="search"
-              onSubmitEditing={() => fetchNutrition(name)}
-            />
-            <TouchableOpacity onPress={() => fetchNutrition(name)}>
-              <Ionicons name="search" size={22} color="#333" style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
+          {/* Form card */}
+          <View style={styles.formCard}>
+            <Text style={styles.label}>ชื่ออาหาร</Text>
+            <View style={styles.searchRow}>
+              <TextInput
+                placeholder="เช่น ข้าวผัด"
+                placeholderTextColor={COLORS.textFaint}
+                style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                value={name}
+                onChangeText={setName}
+                returnKeyType="search"
+                onSubmitEditing={() => fetchNutrition(name)}
+              />
+              <TouchableOpacity
+                style={[styles.searchBtn, searching && { opacity: 0.7 }]}
+                onPress={() => fetchNutrition(name)}
+                disabled={searching}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="search" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.macroGrid}>
+              <MacroField
+                label="โปรตีน (g)"
+                value={protein}
+                setter={setProtein}
+                icon="barbell-outline"
+                color={COLORS.accentProtein}
+              />
+              <MacroField
+                label="ไขมัน (g)"
+                value={fat}
+                setter={setFat}
+                icon="water-outline"
+                color={COLORS.accentFat}
+              />
+              <MacroField
+                label="คาร์โบไฮเดรต (g)"
+                value={carb}
+                setter={setCarb}
+                icon="restaurant-outline"
+                color={COLORS.accentCarb}
+              />
+              <MacroField
+                label="แคลอรี่ (kcal)"
+                value={kcal}
+                setter={setKcal}
+                icon="flame-outline"
+                color={COLORS.accentEnergy}
+              />
+            </View>
           </View>
 
-          <Text style={styles.label}>โปรตีน (g)</Text>
-          <TextInput
-            value={protein}
-            onChangeText={setProtein}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>ไขมัน (g)</Text>
-          <TextInput
-            value={fat}
-            onChangeText={setFat}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>คาร์โบไฮเดรต (g)</Text>
-          <TextInput
-            value={carb}
-            onChangeText={setCarb}
-            keyboardType="numeric"
-            style={styles.input}
-          />
-
-          <Text style={styles.label}>แคลอรี่ (kcal)</Text>
-          <TextInput
-            value={kcal}
-            onChangeText={setKcal}
-            keyboardType="numeric"
-            style={styles.input}
-          />
+          <View style={{ height: 100 }} />
         </ScrollView>
 
         <View style={styles.bottomBar}>
-          <TouchableOpacity
-            style={[styles.btnGreen, saving && { opacity: 0.6 }]}
-            onPress={save}
-            disabled={saving}
-          >
-            <Text style={styles.btnText}>บันทึก</Text>
+          <TouchableOpacity style={styles.btnCancel} onPress={() => navigation.goBack()} activeOpacity={0.85}>
+            <Text style={styles.btnCancelText}>ยกเลิก</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.btnGray} onPress={() => navigation.goBack()}>
-            <Text style={styles.btnText}>ยกเลิก</Text>
+          <TouchableOpacity
+            style={[styles.btnSave, saving && { opacity: 0.6 }]}
+            onPress={save}
+            disabled={saving}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[COLORS.gradientStart, COLORS.gradientEnd]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.btnSaveGradient}
+            >
+              <Ionicons name="checkmark-circle" size={18} color="#fff" />
+              <Text style={styles.btnText}>{saving ? "กำลังบันทึก..." : "บันทึก"}</Text>
+            </LinearGradient>
           </TouchableOpacity>
         </View>
-      </View>
+      </SafeAreaView>
     </KeyboardAvoidingView>
+  );
+}
+
+/* ---------------------- Macro Field ---------------------- */
+function MacroField({ label, value, setter, icon, color }) {
+  return (
+    <View style={styles.macroFieldWrap}>
+      <View style={styles.fieldLabelRow}>
+        <Ionicons name={icon} size={13} color={color} />
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      <TextInput
+        value={value}
+        onChangeText={setter}
+        keyboardType="numeric"
+        style={[styles.input, { marginBottom: 0 }]}
+        placeholder="0"
+        placeholderTextColor={COLORS.textFaint}
+      />
+    </View>
   );
 }
 
 // -------------------- Styles --------------------
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#C9FFE0" },
-  content: { paddingHorizontal: 20, paddingBottom: 40 },
+  container: { flex: 1, backgroundColor: COLORS.bg },
+  content: { paddingHorizontal: 16, paddingTop: 16 },
+
+  /* Header */
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 18,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#fff",
+    textAlign: "center",
+  },
+  headerSub: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.75)",
+    textAlign: "center",
+    marginTop: 2,
+  },
 
   imageCard: {
     width: "100%",
-    backgroundColor: "#fff",
-    marginTop: 30,
-    borderRadius: 16,
-    padding: 10,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    elevation: 3,
+    backgroundColor: COLORS.card,
+    marginBottom: 16,
+    borderRadius: 22,
+    padding: 8,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.08,
+    shadowOffset: { width: 0, height: 6 },
+    shadowRadius: 12,
+    elevation: Platform.OS === "android" ? 3 : 0,
     alignItems: "center",
-    marginBottom: 20,
   },
 
   image: {
-    borderRadius: 12,
+    borderRadius: 16,
     resizeMode: "cover",
+  },
+
+  retakeBadge: {
+    position: "absolute",
+    right: 10,
+    bottom: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(15,44,35,0.65)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+  },
+  retakeBadgeText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    marginLeft: 5,
   },
 
   uploadBox: {
     width: "100%",
     height: 200,
-    backgroundColor: "#f3f3f3",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#ddd",
+    backgroundColor: COLORS.primarySoft,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  uploadIconWrap: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.card,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+  },
+  uploadText: {
+    color: COLORS.textMain,
+    fontWeight: "700",
+    fontSize: 15,
+  },
+  uploadSubtext: {
+    color: COLORS.textSub,
+    fontSize: 12.5,
+    marginTop: 3,
+  },
+
+  formCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: 22,
+    padding: 18,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 2,
+  },
+
+  label: { marginBottom: 6, fontWeight: "700", fontSize: 13.5, color: COLORS.textMain },
+
+  fieldLabelRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+
+  searchRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+
+  searchBtn: {
+    marginLeft: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
   },
 
-  label: { marginTop: 10, marginBottom: 4, fontWeight: "600", color: "#333" },
-
-  searchRow: { flexDirection: "row", alignItems: "center" },
-
   input: {
-    backgroundColor: "#fff",
+    backgroundColor: COLORS.bg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: 12,
-    height: 44,
+    height: 46,
     paddingHorizontal: 14,
     marginBottom: 10,
+    fontSize: 15,
+    color: COLORS.textMain,
+  },
 
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 4,
-    elevation: 1,
+  macroGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    rowGap: 12,
+  },
+  macroFieldWrap: {
+    width: "48%",
   },
 
   bottomBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 20,
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 18 : 16,
+    backgroundColor: COLORS.bg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
   },
 
-  btnGreen: {
-    backgroundColor: "#2ECC71",
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 14,
+  btnCancel: {
+    flex: 1,
+    backgroundColor: COLORS.dangerSoft,
+    paddingVertical: 15,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  btnGray: {
-    backgroundColor: "#777",
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    borderRadius: 14,
+  btnCancelText: { color: COLORS.danger, fontSize: 15.5, fontWeight: "800" },
+
+  btnSave: {
+    flex: 1.4,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 4,
   },
-  btnText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  btnSaveGradient: {
+    flexDirection: "row",
+    paddingVertical: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnText: { color: "#fff", fontSize: 15.5, fontWeight: "800", marginLeft: 6 },
 });
