@@ -1,8 +1,9 @@
 // FoodFormScreen1.js (FINAL FIXED VERSION)
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
   Alert, KeyboardAvoidingView, Platform, ScrollView, Dimensions,
+  TouchableWithoutFeedback, Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -129,6 +130,57 @@ export default function FoodFormScreen1({ navigation, route }) {
     return data.url; // /uploads/xxx.jpg
   };
 
+  // ---------------- Autocomplete predictions (ชื่ออาหารจาก database) ----------------
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const debounceRef = useRef(null);
+  const justPickedRef = useRef(false); // กันไม่ให้ fetch ซ้ำทันทีหลังผู้ใช้กดเลือกจาก dropdown
+
+  const fetchPredictions = async (q) => {
+    if (!q.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      setLoadingSuggestions(true);
+      const res = await fetch(`${API_BASE}/menu?search=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setSuggestions(Array.isArray(data) ? data.slice(0, 6) : []);
+    } catch (err) {
+      console.log("PREDICTION ERROR:", err.message);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (justPickedRef.current) {
+      justPickedRef.current = false;
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!name.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => fetchPredictions(name), 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [name]);
+
+  const selectSuggestion = (f) => {
+    justPickedRef.current = true;
+    setName(f.food_name || "");
+    setProtein(f.protein?.toString() || "");
+    setFat(f.fat?.toString() || "");
+    setCarb(f.carb?.toString() || "");
+    setKcal(f.calories?.toString() || "");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
+
   // ---------------- Fetch nutrition ----------------
   const [searching, setSearching] = useState(false);
   const fetchNutrition = async (foodName) => {
@@ -144,7 +196,8 @@ export default function FoodFormScreen1({ navigation, route }) {
       }
 
       const f = data[0];
-      setName(f.food_name || foodName);
+      // หมายเหตุ: ไม่เขียนทับชื่อที่ผู้ใช้พิมพ์เอง — ดึงมาแค่ค่าโภชนาการเท่านั้น
+      // (เดิม setName(f.food_name || foodName) ทำให้ "ต้มยำ" ถูกแทนที่ด้วยชื่อที่ตรงที่สุดในฐานข้อมูล เช่น "ก๋วยเตี๋ยวต้มยำ")
       setProtein(f.protein?.toString() || "");
       setFat(f.fat?.toString() || "");
       setCarb(f.carb?.toString() || "");
@@ -199,11 +252,17 @@ export default function FoodFormScreen1({ navigation, route }) {
   };
 
   // ---------------- UI ----------------
+  const dismissAll = () => {
+    Keyboard.dismiss();
+    setShowSuggestions(false);
+  };
+
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      <TouchableWithoutFeedback onPress={dismissAll}>
       <SafeAreaView style={styles.container} edges={["top"]}>
 
         {/* Header (gradient band) */}
@@ -227,7 +286,11 @@ export default function FoodFormScreen1({ navigation, route }) {
           <View style={{ width: 38 }} />
         </LinearGradient>
 
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* IMAGE */}
           <View style={styles.imageCard}>
@@ -253,24 +316,64 @@ export default function FoodFormScreen1({ navigation, route }) {
           {/* Form card */}
           <View style={styles.formCard}>
             <Text style={styles.label}>ชื่ออาหาร</Text>
-            <View style={styles.searchRow}>
-              <TextInput
-                placeholder="เช่น ข้าวผัด"
-                placeholderTextColor={COLORS.textFaint}
-                style={[styles.input, { flex: 1, marginBottom: 0 }]}
-                value={name}
-                onChangeText={setName}
-                returnKeyType="search"
-                onSubmitEditing={() => fetchNutrition(name)}
-              />
-              <TouchableOpacity
-                style={[styles.searchBtn, searching && { opacity: 0.7 }]}
-                onPress={() => fetchNutrition(name)}
-                disabled={searching}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="search" size={18} color="#fff" />
-              </TouchableOpacity>
+            <View style={{ zIndex: 20 }}>
+              <View style={styles.searchRow}>
+                <TextInput
+                  placeholder="เช่น ข้าวผัด"
+                  placeholderTextColor={COLORS.textFaint}
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  value={name}
+                  onChangeText={(t) => {
+                    setName(t);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  returnKeyType="search"
+                  onSubmitEditing={() => fetchNutrition(name)}
+                />
+                <TouchableOpacity
+                  style={[styles.searchBtn, searching && { opacity: 0.7 }]}
+                  onPress={() => fetchNutrition(name)}
+                  disabled={searching}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="search" size={18} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              {/* Autocomplete dropdown */}
+              {showSuggestions && (loadingSuggestions || suggestions.length > 0) && (
+                <View style={styles.suggestBox}>
+                  {loadingSuggestions ? (
+                    <View style={styles.suggestLoadingRow}>
+                      <Ionicons name="search" size={14} color={COLORS.textFaint} />
+                      <Text style={styles.suggestLoadingText}>กำลังค้นหา...</Text>
+                    </View>
+                  ) : (
+                    suggestions.map((f, idx) => (
+                      <TouchableOpacity
+                        key={`${f.food_name}-${idx}`}
+                        style={[
+                          styles.suggestRow,
+                          idx === suggestions.length - 1 && { borderBottomWidth: 0 },
+                        ]}
+                        onPress={() => selectSuggestion(f)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.suggestIconWrap}>
+                          <Ionicons name="restaurant-outline" size={14} color={COLORS.primary} />
+                        </View>
+                        <Text style={styles.suggestName} numberOfLines={1}>
+                          {f.food_name}
+                        </Text>
+                        {f.calories != null && (
+                          <Text style={styles.suggestKcal}>{f.calories} kcal</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
             </View>
 
             <View style={styles.macroGrid}>
@@ -331,6 +434,7 @@ export default function FoodFormScreen1({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -477,6 +581,64 @@ const styles = StyleSheet.create({
   },
 
   searchRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+
+  suggestBox: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    right: 54, // เว้นพื้นที่ปุ่มค้นหาด้านขวา
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    overflow: "hidden",
+    zIndex: 30,
+  },
+  suggestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  suggestIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  suggestName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textMain,
+  },
+  suggestKcal: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.textFaint,
+    marginLeft: 8,
+  },
+  suggestLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  suggestLoadingText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: COLORS.textFaint,
+  },
 
   searchBtn: {
     marginLeft: 8,

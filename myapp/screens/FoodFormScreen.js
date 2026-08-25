@@ -1,9 +1,10 @@
 // FoodFormScreen.js
 import * as ImageManipulator from "expo-image-manipulator";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View, Text, TextInput, StyleSheet, Image, TouchableOpacity,
-  Alert, KeyboardAvoidingView, ScrollView, Platform
+  Alert, KeyboardAvoidingView, ScrollView, Platform,
+  TouchableWithoutFeedback, Keyboard,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -82,6 +83,56 @@ export default function FoodFormScreen({ navigation, route }) {
     if (preset.carb) setCarb(String(preset.carb));
     if (preset.kcal) setKcal(String(preset.kcal));
   }, [preset]);
+
+  // ---------------------- AUTOCOMPLETE (ชื่ออาหารจาก database) ----------------------
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const debounceRef = useRef(null);
+  const justPickedRef = useRef(false); // กันไม่ให้ fetch ซ้ำทันทีหลังผู้ใช้กดเลือกจาก dropdown
+
+  const fetchPredictions = async (q) => {
+    if (!q.trim()) {
+      setSuggestions([]);
+      return;
+    }
+    try {
+      setLoadingSuggestions(true);
+      const res = await API.get(`/menu?search=${encodeURIComponent(q)}`);
+      setSuggestions(Array.isArray(res.data) ? res.data.slice(0, 6) : []);
+    } catch (err) {
+      console.log("PREDICTION ERROR:", err.message);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  };
+
+  useEffect(() => {
+    if (justPickedRef.current) {
+      justPickedRef.current = false;
+      return;
+    }
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (!name.trim()) {
+      setSuggestions([]);
+      return;
+    }
+
+    debounceRef.current = setTimeout(() => fetchPredictions(name), 350);
+    return () => clearTimeout(debounceRef.current);
+  }, [name]);
+
+  const selectSuggestion = (item) => {
+    justPickedRef.current = true;
+    setName(item.food_name || item.name || "");
+    setProtein(item.protein?.toString() || "");
+    setFat(item.fat?.toString() || "");
+    setCarb(item.carb?.toString() || "");
+    setKcal(item.calories?.toString() || "");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   // ---------------------- SEARCH NUTRITION ----------------------
   const searchNutrition = async () => {
@@ -188,8 +239,14 @@ export default function FoodFormScreen({ navigation, route }) {
   };
 
   // ---------------------- UI ----------------------
+  const dismissAll = () => {
+    Keyboard.dismiss();
+    setShowSuggestions(false);
+  };
+
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <TouchableWithoutFeedback onPress={dismissAll}>
       <SafeAreaView style={s.container} edges={["top"]}>
 
         {/* Header (gradient band) */}
@@ -213,7 +270,11 @@ export default function FoodFormScreen({ navigation, route }) {
           <View style={{ width: 38 }} />
         </LinearGradient>
 
-        <ScrollView contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={s.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
 
           {/* IMAGE */}
           <View style={s.imageCard}>
@@ -231,23 +292,63 @@ export default function FoodFormScreen({ navigation, route }) {
           <View style={s.formCard}>
             {/* NAME */}
             <Text style={s.label}>ชื่ออาหาร</Text>
-            <View style={s.row}>
-              <TextInput
-                style={[s.input, { flex: 1 }]}
-                value={name}
-                onChangeText={setName}
-                placeholder="เช่น ข้าวผัด"
-                placeholderTextColor={COLORS.textFaint}
-              />
-              <TouchableOpacity
-                style={[s.searchBtn, searching && { opacity: 0.7 }]}
-                onPress={searchNutrition}
-                disabled={searching}
-                activeOpacity={0.85}
-              >
-                <Ionicons name="search" size={16} color="#fff" />
-                <Text style={s.searchBtnText}>{searching ? "..." : "ค้นหา"}</Text>
-              </TouchableOpacity>
+            <View style={{ zIndex: 20 }}>
+              <View style={s.row}>
+                <TextInput
+                  style={[s.input, { flex: 1 }]}
+                  value={name}
+                  onChangeText={(t) => {
+                    setName(t);
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
+                  placeholder="เช่น ข้าวผัด"
+                  placeholderTextColor={COLORS.textFaint}
+                />
+                <TouchableOpacity
+                  style={[s.searchBtn, searching && { opacity: 0.7 }]}
+                  onPress={searchNutrition}
+                  disabled={searching}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="search" size={16} color="#fff" />
+                  <Text style={s.searchBtnText}>{searching ? "..." : "ค้นหา"}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Autocomplete dropdown */}
+              {showSuggestions && (loadingSuggestions || suggestions.length > 0) && (
+                <View style={s.suggestBox}>
+                  {loadingSuggestions ? (
+                    <View style={s.suggestLoadingRow}>
+                      <Ionicons name="search" size={14} color={COLORS.textFaint} />
+                      <Text style={s.suggestLoadingText}>กำลังค้นหา...</Text>
+                    </View>
+                  ) : (
+                    suggestions.map((item, idx) => (
+                      <TouchableOpacity
+                        key={`${item.food_name}-${idx}`}
+                        style={[
+                          s.suggestRow,
+                          idx === suggestions.length - 1 && { borderBottomWidth: 0 },
+                        ]}
+                        onPress={() => selectSuggestion(item)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={s.suggestIconWrap}>
+                          <Ionicons name="restaurant-outline" size={14} color={COLORS.primary} />
+                        </View>
+                        <Text style={s.suggestName} numberOfLines={1}>
+                          {item.food_name}
+                        </Text>
+                        {item.calories != null && (
+                          <Text style={s.suggestKcal}>{item.calories} kcal</Text>
+                        )}
+                      </TouchableOpacity>
+                    ))
+                  )}
+                </View>
+              )}
             </View>
 
             {/* MACROS */}
@@ -318,6 +419,7 @@ export default function FoodFormScreen({ navigation, route }) {
           </TouchableOpacity>
         </View>
       </SafeAreaView>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 }
@@ -438,6 +540,64 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 16,
+  },
+
+  suggestBox: {
+    position: "absolute",
+    top: 50,
+    left: 0,
+    right: 78, // เว้นพื้นที่ปุ่มค้นหาด้านขวา
+    backgroundColor: COLORS.card,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    shadowColor: "#0F4C3A",
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+    overflow: "hidden",
+    zIndex: 30,
+  },
+  suggestRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 11,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.border,
+  },
+  suggestIconWrap: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: COLORS.primarySoft,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 8,
+  },
+  suggestName: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: "700",
+    color: COLORS.textMain,
+  },
+  suggestKcal: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: COLORS.textFaint,
+    marginLeft: 8,
+  },
+  suggestLoadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  suggestLoadingText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: COLORS.textFaint,
   },
 
   searchBtn: {
