@@ -109,24 +109,89 @@ Nutrimatety คือแอปมือถือสำหรับติดต�
 
 ## API หลัก
 
-| Method | Endpoint | รายละเอียด |
+API ที่ต้องระบุตัวตนให้ส่ง header ต่อไปนี้ โดยนำ `access_token` ที่ได้จากการ login หรือสมัครสมาชิกมาใช้
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### ผู้ใช้และโปรไฟล์
+
+| Endpoint | ส่งไป (request) | ได้รับกลับ/นำไปแสดง (response) |
 | --- | --- | --- |
-| `POST` | `/users/register` | ตรวจสอบว่าอีเมลยังไม่ถูกลงทะเบียน |
-| `POST` | `/users/login` | เข้าสู่ระบบและรับ JWT |
-| `POST` | `/users/register-with-profile` | สมัครสมาชิกพร้อมสร้างโปรไฟล์ |
-| `GET` | `/users/me` | ดูผู้ใช้ปัจจุบัน |
-| `POST` | `/profiles/` | สร้างโปรไฟล์ของผู้ใช้ที่เข้าสู่ระบบ |
-| `GET` | `/profiles/me` | ดูโปรไฟล์ของผู้ใช้ปัจจุบัน |
-| `PATCH/PUT` | `/profiles/` | แก้ไขโปรไฟล์ |
-| `DELETE` | `/profiles/me` | ลบโปรไฟล์ |
-| `GET` | `/menu` | รายการเมนูอาหาร |
-| `GET/POST/PATCH/DELETE` | `/meals` | จัดการบันทึกมื้ออาหาร |
-| `GET` | `/meals/dates` | วันที่ที่มีประวัติอาหาร |
-| `POST` | `/files/upload` | อัปโหลดรูปภาพอาหาร |
-| `POST` | `/yolo/predict` | จำแนกอาหารจากรูปภาพ |
-| `GET` | `/analytics/nutrition-behavior` | สรุปพฤติกรรมโภชนาการ |
-| `GET` | `/analytics/weekly-summary` | สรุปรายสัปดาห์ |
-| `GET/POST/PUT/DELETE` | `/admin/menu` | จัดการเมนูสำหรับผู้ดูแลระบบ |
+| `POST /users/register` | JSON: `email`, `password` | `{ "ok": true }` เมื่ออีเมลยังไม่อยู่ในระบบ ใช้ตรวจสอบก่อนสมัคร |
+| `POST /users/login` | JSON: `email`, `password` | `access_token`, `token_type` — เก็บ token เพื่อเรียก API ที่ล็อกอินแล้ว |
+| `POST /users/register-with-profile` | JSON: `email`, `password`, `profile` | `access_token`, `token_type` — สร้างบัญชีและโปรไฟล์พร้อมเข้าสู่ระบบ |
+| `GET /users/me` | Header: Bearer token | `id`, `email`, `signup_completed` — ใช้ตรวจสอบผู้ใช้ที่ล็อกอินและสถานะสร้างโปรไฟล์ |
+| `GET /users/check-email?email=...` | Query: `email` | `available` — ใช้แสดงว่าอีเมลสมัครได้หรือไม่ |
+| `GET /users/check-username?username=...` | Query: `username` | `available` — ใช้แสดงว่าชื่อผู้ใช้ใช้ได้หรือไม่ |
+| `POST /profiles/` | Header + JSON โปรไฟล์ | โปรไฟล์พร้อมค่าคำนวณสุขภาพ ใช้หลังสมัครแบบแยกขั้นตอน |
+| `GET /profiles/me` | Header: Bearer token | รายละเอียดโปรไฟล์และเป้าหมายสารอาหาร ใช้แสดงหน้า Profile/Home |
+| `PATCH /profiles/` หรือ `PUT /profiles/` | Header + JSON เฉพาะฟิลด์ที่แก้ | โปรไฟล์ที่อัปเดตแล้ว รวมค่า BMI/BMR/TDEE ที่คำนวณใหม่ |
+| `DELETE /profiles/me` | Header: Bearer token | ไม่มี response body (`204`) |
+
+ฟิลด์ `profile` ที่ส่งได้คือ `username`, `gender`, `date_of_birth` (`YYYY-MM-DD`), `height`, `current_weight`, `target_weight`, `goal`, `food_allergies`, `avatar_url` และ `lifestyle` ส่วนโปรไฟล์ที่ตอบกลับเพิ่ม `id`, `user_id`, `bmi`, `bmr`, `tdee`, `protein_target`, `carb_target` และ `fat_target` เพื่อแสดงผลสุขภาพรายบุคคล
+
+ตัวอย่างการสมัครพร้อมโปรไฟล์:
+
+```json
+{
+  "email": "user@example.com",
+  "password": "your-password",
+  "profile": {
+    "username": "nutri_user",
+    "gender": "male",
+    "date_of_birth": "2000-01-15",
+    "height": 175,
+    "current_weight": 70,
+    "target_weight": 65,
+    "goal": "ลดน้ำหนัก",
+    "lifestyle": "light"
+  }
+}
+```
+
+### เมนูและบันทึกมื้ออาหาร
+
+| Endpoint | ส่งไป (request) | ได้รับกลับ/นำไปแสดง (response) |
+| --- | --- | --- |
+| `GET /menu?search=...` | Query `search` (จำเป็น) | รายการเมนูที่ชื่อไทยหรืออังกฤษตรงคำค้น พร้อม `food_name`, `food_name_en`, `calories`, `protein`, `carb`, `fat`, `image_url` — ใช้เป็นรายการค้นหาอาหาร |
+| `POST /meals` | Header + JSON มื้ออาหาร | มื้ออาหารที่บันทึกแล้ว: `id`, `menu_id`, `name`, สารอาหาร, `meal_time`, `image_url`, `created_at` |
+| `GET /meals?date=YYYY-MM-DD` | Header; `date` ไม่บังคับ | รายการมื้อของผู้ใช้ (กรองตามวันได้) สำหรับหน้า History และสรุปมื้ออาหาร |
+| `PATCH /meals/{meal_id}` | Header + JSON เฉพาะข้อมูลที่แก้ | รายการมื้ออาหารหลังแก้ไข |
+| `DELETE /meals/{meal_id}` | Header: Bearer token | ไม่มี response body (`204`) |
+| `GET /meals/dates` | Header: Bearer token | อาร์เรย์วันที่ เช่น `["2026-08-26"]` เพื่อทำเครื่องหมายวันที่มีประวัติอาหาร |
+
+ข้อมูลมื้ออาหารที่ส่งตอนสร้างใช้ `name` และ `meal_time` เป็นฟิลด์จำเป็น และส่ง `protein`, `fat`, `carb`, `calories`, `image_url` ได้ตามต้องการ ตัวอย่าง:
+
+```json
+{
+  "name": "ข้าวกะเพราไก่",
+  "meal_time": "lunch",
+  "calories": 550,
+  "protein": 30,
+  "carb": 65,
+  "fat": 18,
+  "image_url": "/uploads/example.jpg"
+}
+```
+
+### รูปภาพและ AI
+
+| Endpoint | ส่งไป (request) | ได้รับกลับ/นำไปแสดง (response) |
+| --- | --- | --- |
+| `POST /files/upload` | `multipart/form-data` ฟิลด์ `file` เป็นรูปภาพ (สูงสุด 8 MB) | `url`, `filename` — เก็บ `url` ไว้แสดงภาพหรือแนบกับมื้ออาหาร |
+| `POST /yolo/predict` | `multipart/form-data` ฟิลด์ `file` เป็นรูปภาพ | `success`, `name`, `confidence`, `detections`, `image_url`, `uploaded_url`, `original_width`, `original_height` — แสดงชื่ออาหารที่ทำนาย ความมั่นใจ ตัวเลือก 5 อันดับแรก และภาพผลลัพธ์ |
+
+`detections` ของ YOLO เป็นรายการอันดับการจำแนก เช่น `{ "cls": 1, "label": "Omelet Rice", "conf": 0.82 }` ไม่ใช่พิกัดกรอบวัตถุ
+
+### การวิเคราะห์และผู้ดูแลระบบ
+
+| Endpoint | ส่งไป (request) | ได้รับกลับ/นำไปแสดง (response) |
+| --- | --- | --- |
+| `GET /analytics/nutrition-behavior` | Header: Bearer token | ค่าเฉลี่ย 7 วันของ `calories`, `protein`, `carb`, `fat` เปรียบเทียบกับกลุ่มที่มีเพศ ไลฟ์สไตล์ ช่วงอายุ และเป้าหมายเดียวกัน พร้อม `period` และ `peer_group` |
+| `GET /analytics/weekly-summary` | Header: Bearer token | `period`, `summary_type`, `peer_group`, `message` — ข้อความสรุป/แจ้งเตือนรายสัปดาห์สำหรับหน้า Summary |
+| `GET/POST/PUT/DELETE /admin/menu` | Header ของอีเมลใน `ADMIN_EMAILS`; JSON เมนูสำหรับ POST/PUT | รายการหรือข้อมูลเมนู: `id`, `food_name`, `food_name_en`, `calories`, `protein`, `carb`, `fat` |
 
 รายละเอียด request และ response ที่เป็นปัจจุบันดูได้จาก Swagger UI ที่ `/docs` หลังเริ่ม Backend
 
