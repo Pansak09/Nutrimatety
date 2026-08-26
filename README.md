@@ -1,164 +1,142 @@
-# nutrimatety
-# 🥗 Nutrimatety - Health & Diet Tracking App
+# Nutrimatety
 
-**Nutrimatety** คือแอปพลิเคชันดูแลสุขภาพและติดตามโภชนาการอัจฉริยะ ช่วยให้ผู้ใช้บรรลุเป้าหมายสุขภาพ (ลดน้ำหนัก/เพิ่มน้ำหนัก/รักษารูปร่าง) ผ่านการคำนวณทางวิทยาศาสตร์ (BMR/TDEE) และการบันทึกอาหารที่แม่นยำ
+Nutrimatety คือแอปมือถือสำหรับติดตามโภชนาการและสุขภาพ ผู้ใช้สามารถสร้างโปรไฟล์สุขภาพ บันทึกมื้ออาหาร ดูสรุปและประวัติการรับประทานอาหาร รวมถึงถ่ายหรืออัปโหลดรูปอาหารเพื่อให้โมเดล YOLO ช่วยจำแนกอาหารได้
 
-โปรเจกต์นี้พัฒนาด้วย **React Native (Expo)** สำหรับ Frontend และ **FastAPI** ร่วมกับ **PostgreSQL** สำหรับ Backend
+โปรเจกต์แบ่งเป็น React Native/Expo สำหรับแอปมือถือ และ FastAPI กับ PostgreSQL สำหรับ API และฐานข้อมูล
 
-## ✨ ฟีเจอร์หลัก (Key Features)
+## ความสามารถ
 
-### 🔐 ระบบสมาชิกและความปลอดภัย (Authentication)
-* **JWT Authentication:** ยืนยันตัวตนผ่าน Token เพื่อความปลอดภัยในการเข้าถึงข้อมูล
+- สมัครสมาชิก เข้าสู่ระบบด้วย JWT และเก็บโทเค็นใน AsyncStorage
+- สร้างและแก้ไขโปรไฟล์สุขภาพ เช่น วันเกิด เพศ น้ำหนัก ส่วนสูง ระดับกิจกรรม และเป้าหมาย
+- บันทึก แก้ไข และลบมื้ออาหาร พร้อมข้อมูลแคลอรี โปรตีน คาร์โบไฮเดรต และไขมัน
+- ดูเมนูอาหาร ประวัติการรับประทาน และสรุป/พฤติกรรมโภชนาการรายสัปดาห์
+- อัปโหลดรูปอาหารและวิเคราะห์ภาพด้วยโมเดล YOLOv8 ที่ `fastapi_backend/models/best.pt`
+- จัดการเมนูอาหารสำหรับผู้ดูแลระบบผ่าน API และหน้า `/admin/menu-page`
 
-### 👤 โปรไฟล์สุขภาพอัจฉริยะ (Smart Health Profile)
-* **Personalized Setup:** สร้างโปรไฟล์ตามข้อมูลจริง (อายุ, เพศ, ส่วนสูง, น้ำหนัก, ระดับกิจกรรม)
-* **Goal Setting:** กำหนดเป้าหมายสุขภาพ (ลดน้ำหนัก, เพิ่มกล้ามเนื้อ, รักษาหุ่น)
-* **Auto Calculation:** คำนวณค่า **BMI**, **BMR** (พลังงานพื้นฐาน) และ **TDEE** (พลังงานที่ใช้ต่อวัน) ให้อัตโนมัติทันที
+## โครงสร้างโปรเจกต์
 
-### 🍽️ ระบบติดตามโภชนาการ (Nutrition Tracking)
-* **Meal Logging:** บันทึกอาหารแยกตามมื้อ (เช้า, กลางวัน, เย็น, ของว่าง)
-* **Macro-nutrients:** ติดตามสารอาหารหลักทั้ง **โปรตีน (Protein)**, **คาร์โบไฮเดรต (Carb)**, และ **ไขมัน (Fat)**
-* **Menu Database:** เลือกบันทึกจากฐานข้อมูลเมนูอาหารที่มีโภชนาการระบุไว้แล้ว
+```text
+.
+├── myapp/                 # แอป React Native (Expo)
+│   ├── App.js
+│   ├── api.js             # ที่อยู่ FastAPI และ Axios client
+│   ├── screens/
+│   └── components/
+└── fastapi_backend/       # FastAPI, SQLAlchemy และ PostgreSQL
+    ├── main.py
+    ├── routers/
+    ├── models.py
+    ├── schemas.py
+    ├── alembic/
+    └── models/best.pt     # โมเดล YOLO สำหรับจำแนกอาหาร
+```
 
-### 📸 AI & Image Features
-* **AI Food Analysis:** ระบบวิเคราะห์รูปภาพอาหาร (Smart Recognition)
-* **Photo Gallery:** อัปโหลดและเก็บรูปภาพอาหารในแต่ละมื้อเพื่อเป็น Diary
+## เทคโนโลยี
 
-### 📊 แดชบอร์ดและประวัติ (Dashboard & History)
-* **Daily Summary:** แสดงกราฟวงกลมหรือแถบความคืบหน้าของแคลอรี่ที่กินไป vs เป้าหมาย
-* **Eating History:** ดูประวัติการกินย้อนหลังเพื่อวิเคราะห์พฤติกรรมสุขภาพ
+- **Mobile:** React Native 0.81, Expo SDK 54, React Navigation, Axios, Expo Camera/Image Picker
+- **Backend:** Python, FastAPI, Uvicorn, SQLAlchemy, Pydantic Settings, PostgreSQL, Alembic
+- **AI/รูปภาพ:** Ultralytics YOLOv8, Pillow, NumPy
+- **Authentication:** JWT (`python-jose`) และ Passlib/bcrypt
 
----
+## ข้อกำหนดเบื้องต้น
 
-## 🛠 Tech Stack
+- Node.js และ npm
+- Python 3.10 ขึ้นไป
+- PostgreSQL ที่กำลังทำงานอยู่
+- Expo Go หรือ Android/iOS emulator สำหรับทดสอบแอป
 
-### Frontend (Mobile App)
-* **Framework:** React Native (via Expo SDK)
-* **Language:** JavaScript / React
-* **Navigation:** React Navigation (Stack & Bottom Tabs)
-* **HTTP Client:** Axios
-* **UI/UX:** Expo Vector Icons, StyleSheet
+## ตั้งค่าและรัน Backend
 
-### Backend (API Server)
-* **Framework:** FastAPI (Python)
-* **Database:** PostgreSQL
-* **ORM:** SQLAlchemy
-* **Data Validation:** Pydantic
-* **Authentication:** OAuth2 with Password (JWT), Passlib
+1. สร้างฐานข้อมูล PostgreSQL เช่น `nutrimatety_db`
 
----
+2. เข้าโฟลเดอร์ Backend และสร้าง virtual environment
 
-## 🚀 การติดตั้งและรันโปรเจกต์ (Installation Guide)
+   ```powershell
+   cd fastapi_backend
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
 
-### ส่วนที่ 1: ตั้งค่า Database & Backend
+   สำหรับ macOS/Linux ให้ใช้ `source venv/bin/activate`
 
-1.  **Clone Project**
-    ```bash
-    git clone [https://github.com/Pansak09/Nutrimatety.git](https://github.com/Pansak09/Nutrimatety.git)
-    cd Nutrimatety/backend
-    ```
+3. สร้างไฟล์ `fastapi_backend/.env` โดยกำหนดค่าที่จำเป็นดังนี้
 
-2.  **เตรียม PostgreSQL Database**
-    * สร้าง Database เปล่าใน PostgreSQL (เช่นชื่อ `nutrimatety_db`)
-    * ตรวจสอบ Username/Password ของ PostgreSQL ในเครื่องคุณ
+   ```env
+   DATABASE_URL=postgresql://postgres:your_password@localhost:5432/nutrimatety_db
+   SECRET_KEY=replace_with_a_long_random_secret
+   ACCESS_TOKEN_EXPIRE_MINUTES=30
+   CORS_ORIGINS=*
+   ADMIN_EMAILS=admin@example.com
+   ```
 
-3.  **ตั้งค่า Environment Variables**
-    * สร้างไฟล์ `.env` ในโฟลเดอร์ `backend/`
-    * ใส่โค้ดด้านล่าง (เปลี่ยนข้อมูลให้ตรงกับเครื่องของคุณ):
-    ```env
-    # backend/.env
-    # รูปแบบ: postgresql://username:password@localhost:5432/db_name
-    DATABASE_URL=postgresql://postgres:password1234@localhost:5432/nutrimatety_db
-    
-    SECRET_KEY=yoursecretkey_changeme_12345
-    ALGORITHM=HS256
-    ACCESS_TOKEN_EXPIRE_MINUTES=30
-    ```
+   `ADMIN_EMAILS` เป็นรายการอีเมลผู้ดูแลระบบ คั่นด้วยเครื่องหมายจุลภาค และใช้สำหรับ API ภายใต้ `/admin`.
 
-4.  **ติดตั้งและรัน Backend**
-    ```bash
-    # สร้าง Virtual Environment
-    python -m venv venv
-    
-    # Activate Environment
-    # Windows:
-    venv\Scripts\activate
-    # Mac/Linux:
-    source venv/bin/activate
+4. ติดตั้ง dependencies และรันเซิร์ฟเวอร์
 
-    # ติดตั้ง Dependencies
-    pip install -r requirements.txt
-    
-    # (ถ้ายังไม่มี driver สำหรับ postgres)
-    pip install psycopg2-binary
+   ```powershell
+   pip install -r requirements.txt
+   uvicorn main:app --reload --host 0.0.0.0 --port 8000
+   ```
 
-    # รัน Server
-    uvicorn main:app --reload --host 0.0.0.0 --port 8000
-    ```
-    ✅ *ตรวจสอบ:* เข้าเว็บ `http://localhost:8000/docs` ต้องเจอหน้า Swagger UI
+   จากนั้นเปิด [http://localhost:8000/docs](http://localhost:8000/docs) เพื่อดู Swagger UI หรือเรียก `GET /healthz` เพื่อตรวจสอบสถานะ API
 
----
+> หมายเหตุ: ณ สถานะปัจจุบัน `fastapi_backend/requirements.txt` มีบรรทัด `passlib[bcrypt==3.2.2` ที่ปิดวงเล็บไม่ครบ และยังไม่ได้ระบุ `pydantic-settings` แม้โค้ดจะใช้งานอยู่ จึงต้องแก้ dependency เหล่านี้ก่อนติดตั้งในสภาพแวดล้อมใหม่
 
-### ส่วนที่ 2: ตั้งค่า Frontend (React Native)
+## ตั้งค่าและรันแอปมือถือ
 
-1.  **เข้าไปที่โฟลเดอร์ Frontend**
-    ```bash
-    cd ../frontend
-    ```
+1. เปิดเทอร์มินัลใหม่ แล้วเข้าโฟลเดอร์แอป
 
-2.  **ติดตั้ง Dependencies**
-    ```bash
-    npm install
-    ```
+   ```powershell
+   cd myapp
+   npm install
+   ```
 
-3.  **⚠️ สำคัญ: ตั้งค่า IP Address**
-    * เนื่องจาก Mobile App ไม่สามารถเรียก `localhost` ของคอมพิวเตอร์ได้
-    * ให้หา IPv4 ของเครื่องคอมพิวเตอร์ (Windows: `ipconfig`, Mac: `ifconfig`)
-    * เปิดไฟล์ `api.js` (หรือไฟล์ config) แล้วแก้ URL:
-    ```javascript
-    // api.js
-    // ❌ ห้ามใช้ localhost
-    // ✅ ใช้ IP จริงของเครื่องคอมพิวเตอร์
-    export const BASE_URL = "[http://192.168.1.](http://192.168.1.)XX:8000"; 
-    ```
+2. แก้ค่า `WINDOWS_IP` ใน `myapp/api.js` ให้เป็น IPv4 ของเครื่องที่กำลังรัน FastAPI
 
-4.  **รันแอปพลิเคชัน**
-    ```bash
-    npx expo start
-    ```
-    * กด `a` เพื่อรันบน Android Emulator
-    * กด `i` เพื่อรันบน iOS Simulator
-    * สแกน QR Code ผ่านแอป **Expo Go** บนมือถือ (ต้องต่อ Wi-Fi วงเดียวกับคอมพิวเตอร์)
+   ```js
+   const WINDOWS_IP = '192.168.1.100';
+   ```
 
----
+   แอปจริงต้องใช้ IP ของเครื่อง ไม่ใช่ `localhost` และอุปกรณ์มือถือกับคอมพิวเตอร์ควรอยู่เครือข่ายเดียวกัน
 
-## 📝 API Endpoints ที่สำคัญ
+3. เริ่ม Expo
+
+   ```powershell
+   npm start
+   ```
+
+   หรือเลือกแพลตฟอร์มโดยตรงด้วย `npm run android`, `npm run ios` หรือ `npm run web`
+
+## API หลัก
 
 | Method | Endpoint | รายละเอียด |
-| :--- | :--- | :--- |
-| `POST` | `/users/register-with-profile` | สมัครสมาชิก + สร้างโปรไฟล์สุขภาพ |
-| `POST` | `/users/login` | เข้าสู่ระบบ (รับ Token) |
-| `GET` | `/users/me` | ดูข้อมูล User ปัจจุบัน |
-| `GET` | `/profiles/me` | ดูข้อมูล BMR, TDEE, และสารอาหารที่ต้องการ |
-| `POST` | `/meals/` | บันทึกรายการอาหาร |
+| --- | --- | --- |
+| `POST` | `/users/register` | ตรวจสอบว่าอีเมลยังไม่ถูกลงทะเบียน |
+| `POST` | `/users/login` | เข้าสู่ระบบและรับ JWT |
+| `POST` | `/users/register-with-profile` | สมัครสมาชิกพร้อมสร้างโปรไฟล์ |
+| `GET` | `/users/me` | ดูผู้ใช้ปัจจุบัน |
+| `POST` | `/profiles/` | สร้างโปรไฟล์ของผู้ใช้ที่เข้าสู่ระบบ |
+| `GET` | `/profiles/me` | ดูโปรไฟล์ของผู้ใช้ปัจจุบัน |
+| `PATCH/PUT` | `/profiles/` | แก้ไขโปรไฟล์ |
+| `DELETE` | `/profiles/me` | ลบโปรไฟล์ |
+| `GET` | `/menu` | รายการเมนูอาหาร |
+| `GET/POST/PATCH/DELETE` | `/meals` | จัดการบันทึกมื้ออาหาร |
+| `GET` | `/meals/dates` | วันที่ที่มีประวัติอาหาร |
+| `POST` | `/files/upload` | อัปโหลดรูปภาพอาหาร |
+| `POST` | `/yolo/predict` | จำแนกอาหารจากรูปภาพ |
+| `GET` | `/analytics/nutrition-behavior` | สรุปพฤติกรรมโภชนาการ |
+| `GET` | `/analytics/weekly-summary` | สรุปรายสัปดาห์ |
+| `GET/POST/PUT/DELETE` | `/admin/menu` | จัดการเมนูสำหรับผู้ดูแลระบบ |
 
----
+รายละเอียด request และ response ที่เป็นปัจจุบันดูได้จาก Swagger UI ที่ `/docs` หลังเริ่ม Backend
 
-## ⚠️ ปัญหาที่พบบ่อย (Troubleshooting)
+## ข้อมูลที่ไม่ควร commit
 
-### 1. Error: `Network request failed`
-* **สาเหตุ:** มือถือกับคอมพิวเตอร์ไม่ได้เชื่อมต่อ Wi-Fi เดียวกัน หรือใส่ IP Address ใน `api.js` ผิด
-* **วิธีแก้:** เช็ค IPv4 ของเครื่องคอมฯ และอัปเดตในโค้ด Frontend ใหม่
+ไม่ควรนำค่าจริงใน `.env` เช่นรหัสผ่านฐานข้อมูลและ `SECRET_KEY` ขึ้น repository และไม่ควร commit โฟลเดอร์ runtime เช่น `venv/`, `uploads/`, `results/` และ `runs/` หากไม่ได้ตั้งใจเก็บไฟล์ตัวอย่าง
 
-### 2. Error 400 Bad Request (ตอนสมัครสมาชิก)
-* **สาเหตุ:** ส่งค่าภาษาไทย (เช่น "ลดน้ำหนัก") ไปยัง Backend ที่รับค่าภาษาอังกฤษ (เช่น "lose_weight")
-* **วิธีแก้:** ตรวจสอบไฟล์ `CreateProfileScreen.js` ว่ามีการ Map ค่า Goal ก่อนส่งหรือไม่
+## แก้ปัญหาเบื้องต้น
 
-### 3. PostgreSQL Connection Error
-* **สาเหตุ:** ยังไม่ได้สร้าง Database หรือใส่ Password ในไฟล์ `.env` ผิด
-* **วิธีแก้:** เช็คไฟล์ `.env` และลองใช้โปรแกรมอย่าง pgAdmin หรือ DBeaver เชื่อมต่อดูว่าเข้าได้ไหม
-
----
-
-## 👨‍💻 ผู้จัดทำ
-GitHub: [Pansak09](https://github.com/Pansak09)
+- **เชื่อม API ไม่ได้จากมือถือ:** ตรวจสอบ `WINDOWS_IP` ใน `myapp/api.js`, เครือข่าย Wi-Fi และ firewall ของพอร์ต 8000
+- **Backend เริ่มไม่ได้:** ตรวจสอบค่า `DATABASE_URL` และให้ PostgreSQL ทำงานอยู่
+- **YOLO หาโมเดลไม่เจอ:** ให้รันคำสั่งจากโฟลเดอร์ `fastapi_backend` และตรวจสอบว่ามี `models/best.pt`
+- **เข้า API ผู้ดูแลไม่ได้ (403):** เพิ่มอีเมลผู้ใช้ใน `ADMIN_EMAILS` แล้วเข้าสู่ระบบใหม่เพื่อขอ JWT
